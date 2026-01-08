@@ -368,7 +368,6 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
                   <CustomInputField
                     onChange={(e) => setBackupKey(e)}
                     maxChar={500}
-                    regex="alphanumeric"
                     label="Backup Key"
                     required
                     importProp={{

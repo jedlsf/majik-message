@@ -432,7 +432,6 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
         <CustomInputField
           onChange={handleUpdateJSONID}
           maxChar={500}
-          regex="alphanumeric"
           label="Backup Key"
           currentValue={jsonID}
           required
