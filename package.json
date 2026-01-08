@@ -1,8 +1,19 @@
 {
   "name": "majik-message",
   "type": "module",
+  "description": "Encrypt and decrypt messages on any website. Secure chats with keypairs and seed-based accounts. Open source.",
   "version": "1.0.0",
+  "license": "Apache-2.0",
+  "author": "Zelijah",
   "private": true,
+  "homepage": "https://github.com/jedlsf/majik-message#readme",
+  "bugs": {
+    "url": "https://github.com/jedlsf/majik-message/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jedlsf/majik-message.git"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
