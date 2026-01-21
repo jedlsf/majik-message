@@ -45,7 +45,7 @@ export default defineManifest(() => {
       default_popup: "src/popup/index.html",
     },
 
-    permissions: ["sidePanel", "contextMenus", "scripting", "tabs", "storage"],
+    permissions: ["sidePanel", "contextMenus", "scripting", "storage"],
     host_permissions: ["https://*/*", "http://*/*", "chrome-extension://*/*"],
 
     background: isFirefox

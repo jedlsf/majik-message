@@ -1,5 +1,6 @@
+import { MajikMessageIdentityJSON } from "../database/system/identity";
 import { ISODateString } from "../types";
-import { arrayBufferToBase64 } from "../utils/utilities";
+import { arrayBufferToBase64, base64ToArrayBuffer } from "../utils/utilities";
 
 /* -------------------------------
  * Types
@@ -77,7 +78,7 @@ export class MajikContact {
     id: string,
     publicKey: CryptoKey | { raw: Uint8Array },
     fingerprint: string,
-    meta?: Partial<MajikContactMeta>
+    meta?: Partial<MajikContactMeta>,
   ): MajikContact {
     return new MajikContact({
       id,
@@ -154,32 +155,85 @@ export class MajikContact {
     return this;
   }
 
-  async toJSON(): Promise<SerializedMajikContact> {
-    // Support both CryptoKey and raw-key wrappers (fallbacks when WebCrypto X25519 unsupported)
+  /**
+   * Support both CryptoKey and raw-key wrappers (fallbacks when WebCrypto X25519 unsupported)
+   */
+  async getPublicKeyBase64(): Promise<string> {
     try {
       // If it's a CryptoKey, export with SubtleCrypto
       const raw = await crypto.subtle.exportKey(
         "raw",
-        this.publicKey as CryptoKey
+        this.publicKey as CryptoKey,
       );
-      return {
-        id: this.id,
-        fingerprint: this.fingerprint,
-        meta: { ...this.meta },
-        publicKeyBase64: arrayBufferToBase64(raw),
-      };
+      return arrayBufferToBase64(raw);
     } catch (e) {
       // Fallback: publicKey may be a wrapper with `raw` Uint8Array
       const maybe: any = this.publicKey as any;
       if (maybe && maybe.raw instanceof Uint8Array) {
-        return {
-          id: this.id,
-          fingerprint: this.fingerprint,
-          meta: { ...this.meta },
-          publicKeyBase64: arrayBufferToBase64(maybe.raw.buffer),
-        };
+        return arrayBufferToBase64(maybe.raw.buffer);
       }
       throw e;
+    }
+  }
+
+  async toJSON(): Promise<SerializedMajikContact> {
+    return {
+      id: this.id,
+      fingerprint: this.fingerprint,
+      meta: { ...this.meta },
+      publicKeyBase64: await this.getPublicKeyBase64(),
+    };
+  }
+
+  /**
+   * Reconstruct a MajikContact from its serialized form
+   */
+  static fromJSON(serialized: SerializedMajikContact): MajikContact {
+    try {
+      const publicKeyRaw = new Uint8Array(
+        base64ToArrayBuffer(serialized.publicKeyBase64),
+      );
+
+      return new MajikContact({
+        id: serialized.id,
+        fingerprint: serialized.fingerprint,
+        meta: serialized.meta,
+        publicKey: { raw: publicKeyRaw },
+      });
+    } catch (err) {
+      throw new MajikContactError("Failed to deserialize MajikContact", err);
+    }
+  }
+
+  /**
+   * Create a new MajikContact from a MajikMessageIdentityJSON
+   */
+  static async fromIdentityJSON(
+    identityJSON: MajikMessageIdentityJSON,
+  ): Promise<MajikContact> {
+    try {
+      const publicKeyRaw = new Uint8Array(
+        base64ToArrayBuffer(identityJSON.public_key),
+      );
+
+      const contactData: MajikContactData = {
+        id: identityJSON.id,
+        publicKey: { raw: publicKeyRaw },
+        fingerprint: identityJSON.id,
+        meta: {
+          label: identityJSON.label,
+          createdAt: identityJSON.timestamp,
+          updatedAt: identityJSON.timestamp,
+          blocked: identityJSON.restricted,
+        },
+      };
+
+      return new MajikContact(contactData);
+    } catch (err) {
+      throw new MajikContactError(
+        "Failed to create MajikContact from MajikMessageIdentityJSON",
+        err,
+      );
     }
   }
 

@@ -186,7 +186,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ majik, onUpdate }) => {
           id="message-recipients"
           contacts={contacts}
           value={recipients}
-          tooltip="Recipients"
+          tooltip="Add Recipient"
           onUpdate={handleRecipientsUpdate}
           onClearAll={handleRecipientsClear}
           refKey="recipient"

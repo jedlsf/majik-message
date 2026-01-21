@@ -40,20 +40,6 @@ export interface SerializedIdentity {
   salt?: string; // base64 per-identity salt for PBKDF2
 }
 
-/* ================================
- * Chrome Storage (Source of Truth)
- * ================================ */
-
-const CHROME_KEYSTORE_KEY = "majik_keystore_snapshot";
-const CHROME_KEYSTORE_VERSION = 1;
-
-interface ChromeKeyStoreSnapshot {
-  version: number;
-  identities: SerializedIdentity[];
-  updatedAt: number;
-  checksum: string;
-}
-
 /* -------------------------------
  * Errors
  * ------------------------------- */
@@ -105,37 +91,6 @@ export class KeyStore {
       new TextEncoder().encode(json)
     );
     return arrayBufferToBase64(hash);
-  }
-
-  private static async readChromeSnapshot(): Promise<ChromeKeyStoreSnapshot | null> {
-    const result = await chrome.storage.local.get(CHROME_KEYSTORE_KEY);
-    if (!result[CHROME_KEYSTORE_KEY]) return null;
-
-    const base64 = result[CHROME_KEYSTORE_KEY] as string;
-
-    try {
-      const json = base64ToUtf8(base64);
-      return JSON.parse(json) as ChromeKeyStoreSnapshot;
-    } catch {
-      return null;
-    }
-  }
-
-  private static async writeChromeSnapshot(
-    identities: SerializedIdentity[]
-  ): Promise<void> {
-    const checksum = await this.computeChecksum(identities);
-
-    const snapshot: ChromeKeyStoreSnapshot = {
-      version: CHROME_KEYSTORE_VERSION,
-      identities,
-      updatedAt: Date.now(),
-      checksum,
-    };
-
-    await chrome.storage.local.set({
-      [CHROME_KEYSTORE_KEY]: utf8ToBase64(JSON.stringify(snapshot)),
-    });
   }
 
   /* ================================
@@ -196,58 +151,6 @@ export class KeyStore {
   /* ================================
    * Public API
    * ================================ */
-
-  /**
-   * Hydrate IndexedDB from chrome.storage (SOURCE OF TRUTH)
-   * Safe to call on every background startup.
-   */
-  static async syncFromChromeStorage(): Promise<SerializedIdentity[]> {
-    const snapshot = await this.readChromeSnapshot();
-    if (!snapshot) return [];
-
-    if (snapshot.version !== CHROME_KEYSTORE_VERSION) {
-      throw new KeyStoreError("Unsupported keystore version");
-    }
-
-    // Clear IndexedDB completely
-    const db = await this.getDB();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(this.STORE_NAME, "readwrite");
-      const store = tx.objectStore(this.STORE_NAME);
-      const req = store.clear();
-      req.onsuccess = () => resolve();
-      req.onerror = () =>
-        reject(new KeyStoreError("Failed to clear IndexedDB", req.error));
-    });
-
-    // Rehydrate
-    for (const identity of snapshot.identities) {
-      await this.putSerializedIdentity(identity);
-    }
-
-    return await this.listStoredIdentities();
-  }
-
-  /**
-   * Persist current IndexedDB state into chrome.storage
-   * Must be called after any mutation.
-   */
-  static async syncToChromeStorage(): Promise<void> {
-    const identities = await this.listStoredIdentities();
-    await this.writeChromeSnapshot(identities);
-  }
-
-  /**
-   * Check whether IndexedDB matches chrome.storage snapshot
-   */
-  static async isChromeStorageInSync(): Promise<boolean> {
-    const snapshot = await this.readChromeSnapshot();
-    if (!snapshot) return true;
-
-    const local = await this.listStoredIdentities();
-    const checksum = await this.computeChecksum(local);
-    return checksum === snapshot.checksum;
-  }
 
   /**
    * Validates whether a passphrase can decrypt the stored private key.
@@ -333,9 +236,6 @@ export class KeyStore {
     if (unlocked) {
       unlocked.encryptedPrivateKey = newEncryptedPrivateKey;
     }
-
-    // 5. Sync chrome.storage snapshot
-    await this.syncToChromeStorage();
   }
 
   /**
@@ -410,8 +310,6 @@ export class KeyStore {
       // Cache unlocked identity in-memory for quick access
       this.unlockedIdentities.set(id, ksIdentity);
 
-      await this.syncToChromeStorage();
-
       return ksIdentity;
     } catch (err) {
       throw new KeyStoreError("Failed to create identity", err);
@@ -428,6 +326,10 @@ export class KeyStore {
   ): Promise<KeyStoreIdentity> {
     if (!mnemonic || typeof mnemonic !== "string") {
       throw new KeyStoreError("Mnemonic must be a non-empty string");
+    }
+
+    if (!passphrase?.trim()) {
+      throw new Error("Passphrase cannot be empty or undefined");
     }
 
     try {
@@ -480,7 +382,6 @@ export class KeyStore {
       };
 
       this.unlockedIdentities.set(id, ksIdentity);
-      await this.syncToChromeStorage();
 
       return ksIdentity;
     } catch (err) {
@@ -612,6 +513,10 @@ export class KeyStore {
     passphrase: string,
     salt: Uint8Array
   ): Promise<ArrayBuffer> {
+    if (!passphrase?.trim()) {
+      throw new Error("Passphrase cannot be empty or undefined");
+    }
+
     const keyBytes = providerDeriveKeyFromPassphrase(passphrase, salt);
     const iv = generateRandomBytes(IV_LENGTH);
     const ciphertext = aesGcmEncrypt(keyBytes, iv, new Uint8Array(buffer));
@@ -692,7 +597,6 @@ export class KeyStore {
       }
 
       await this.putSerializedIdentity(obj);
-      await this.syncToChromeStorage();
     } catch (err) {
       throw new KeyStoreError("Failed to import identity backup", err);
     }
@@ -729,9 +633,6 @@ export class KeyStore {
         try {
           // In-memory cleanup
           this.unlockedIdentities.delete(id);
-
-          // Async side effects are SAFE here
-          await this.syncToChromeStorage();
 
           resolve();
         } catch (err) {
@@ -829,6 +730,14 @@ export class KeyStore {
     passphrase: string
   ): Promise<KeyStoreIdentity> {
     try {
+      if (!passphrase?.trim()) {
+        throw new Error("Passphrase cannot be empty or undefined");
+      }
+
+      if (!mnemonic?.trim()) {
+        throw new Error("Seed phrase cannot be empty or undefined");
+      }
+
       const jsonStr = base64ToUtf8(backupBase64);
 
       const obj = JSON.parse(jsonStr) as {
@@ -901,7 +810,6 @@ export class KeyStore {
 
       // Cache unlocked identity
       this.unlockedIdentities.set(ksIdentity.id, ksIdentity);
-      await this.syncToChromeStorage();
 
       return ksIdentity;
     } catch (err) {

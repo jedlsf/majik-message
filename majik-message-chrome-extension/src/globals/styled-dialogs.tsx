@@ -25,7 +25,7 @@ export const DialogContent = styled(AlertDialog.Content)`
   padding: 2.5em;
   gap: 10px;
   width: 350px;
-  max-width: 90vw;
+
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   border: 1px solid transparent;
   justify-content: center;

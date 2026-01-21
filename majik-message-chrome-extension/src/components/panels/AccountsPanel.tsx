@@ -68,7 +68,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
   const [backupKey, setBackupKey] = useState<string>("");
 
   const [mnemonicJSON, setMnemonicJSON] = useState<MnemonicJSON | undefined>(
-    undefined
+    undefined,
   );
 
   const handleCreate = async () => {
@@ -86,7 +86,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
         const createdAccount = await majik.createAccountFromMnemonic(
           mnemonic.trim(),
           passphrase,
-          label
+          label,
         );
 
         const jsonData: MnemonicJSON = {
@@ -105,7 +105,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
         downloadBlob(
           blob,
           "json",
-          `${label} | ${createdAccount.id} | SEED KEY`
+          `${label} | ${createdAccount.id} | SEED KEY`,
         );
       } else {
         const res = await majik.createAccount(passphrase, label);
@@ -136,7 +136,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
     const newLabel =
       prompt(
         "New label:",
-        userAccounts.find((a) => a.id === id)?.meta?.label || ""
+        userAccounts.find((a) => a.id === id)?.meta?.label || "",
       ) || "";
     if (!majik) return;
     try {
@@ -185,9 +185,8 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
       await (majik as any).keyStore?.deleteIdentity?.(id).catch?.(() => {});
       // Try using KeyStore API directly if available
       try {
-        const { KeyStore } = await import(
-          "../../SDK/majik-message/core/crypto/keystore"
-        );
+        const { KeyStore } =
+          await import("../../SDK/majik-message/core/crypto/keystore");
         await (KeyStore as any).deleteIdentity(id);
       } catch (e) {
         // ignore
@@ -211,7 +210,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
       majik.updatePassphrase(
         input.passphrase.old,
         input.passphrase.new,
-        input.id
+        input.id,
       );
       onUpdate?.(majik);
       setRefreshKey((prev) => prev + 1);
@@ -264,7 +263,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
             mnemonicJSON.id,
             mnemonic.trim(),
             mnemonicJSON.phrase || "",
-            label
+            label,
           );
           break;
         }
@@ -272,7 +271,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
           await majik.importAccountFromBackup(
             backupKey.trim(),
             passphrase,
-            label
+            label,
           );
           break;
         }
@@ -322,6 +321,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
       return;
     }
     setPassphrase(value);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleSeedKeyChange = (input: MnemonicJSON) => {
@@ -329,7 +329,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
     setMnemonicJSON(input);
     const stringSeed = jsonToSeed(input);
     setMnemonic(stringSeed);
-    console.log("Mnemonic: ", stringSeed);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const userAccounts = useMemo(() => {
@@ -355,8 +355,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
                   : !mnemonicJSON?.id?.trim() ||
                     !mnemonicJSON ||
                     mnemonicJSON.seed.length === 0 ||
-                    !passphrase?.trim() ||
-                    !jsonToSeed(mnemonicJSON)?.trim()
+                    !passphrase?.trim()
               }
             >
               <DynamicMenuSelector
@@ -395,6 +394,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
                   requireBackupKey={true}
                   onUpdatePassphrase={handleUpdatePassphrase}
                   onChange={handleSeedKeyChange}
+                  currentValue={mnemonicJSON}
                 />
               )}
             </PopUpFormButton>

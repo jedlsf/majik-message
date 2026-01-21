@@ -148,17 +148,10 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
     phrase: currentValue?.phrase,
   });
 
-  const [jsonID, setJSONID] = useState<string>("");
-  const [passphrase, setPassphrase] = useState<string>("");
-
-  /* Sync if currentValue changes */
-  useEffect(() => {
-    if (!currentValue) return;
-    setWords(currentValue?.seed || [...EMPTY_SEED]);
-    setMnemonicJSON(currentValue);
-    setJSONID(currentValue.id);
-    setPassphrase(currentValue?.phrase || "");
-  }, [currentValue]);
+  const [jsonID, setJSONID] = useState<string>(currentValue?.id || "");
+  const [passphrase, setPassphrase] = useState<string>(
+    currentValue?.phrase || ""
+  );
 
   useEffect(() => {
     if (!allowGenerate) return;
@@ -227,6 +220,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
       setJSONID(json.id);
       if (!!json?.phrase) {
         setPassphrase(json.phrase);
+        onUpdatePassphrase?.(json.phrase);
       }
 
       onChange?.(json);
@@ -263,7 +257,6 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
   const handleClipboardImport = async () => {
     try {
       const text = await navigator.clipboard.readText();
-  
 
       applyValue(text);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

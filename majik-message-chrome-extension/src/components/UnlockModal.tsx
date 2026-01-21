@@ -114,7 +114,8 @@ const UnlockModal: React.FC<UnlockModalProps> = ({
       <Panel>
         <TitleHeader>Unlock Identity</TitleHeader>
         <p>
-          Enter passphrase for <strong>
+          Enter passphrase for{" "}
+          <strong>
             {!!majik
               ? majik.getContactByID(identityId)?.meta?.label || identityId
               : identityId}

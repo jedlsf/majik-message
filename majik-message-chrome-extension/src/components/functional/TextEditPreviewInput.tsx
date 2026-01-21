@@ -29,7 +29,6 @@ const Header = styled.div`
   align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid #222;
-
 `;
 
 const Title = styled.div`
@@ -44,8 +43,12 @@ const Toggle = styled.button<{ mode: Mode }>`
   border-radius: 999px;
   border: 1px solid #333;
   cursor: pointer;
-  background: ${({ mode }) => (mode === "encrypt" ? "#2563eb" : "#16a34a")};
-  color: #fff;
+  background: ${({ mode, theme }) =>
+    mode === "encrypt" ? theme.colors.brand.green : theme.colors.accent};
+  color: ${({ mode, theme }) =>
+    mode === "encrypt"
+      ? theme.colors.primaryBackground
+      : theme.colors.textPrimary};
   transition: background 0.2s ease;
 
   &:hover {
@@ -73,7 +76,7 @@ const Label = styled.div`
 
 const TextArea = styled.textarea<{ readOnly?: boolean }>`
   flex: 1;
-    border-radius: 12px;
+  border-radius: 12px;
   resize: none;
   padding: 16px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,

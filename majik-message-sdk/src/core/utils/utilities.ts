@@ -2,6 +2,8 @@
  * Utilities
  * ================================ */
 
+import { customAlphabet } from "nanoid";
+
 // utils/utilities.ts
 export function arrayToBase64(data: Uint8Array): string {
   let binary = "";
@@ -99,11 +101,29 @@ export function jsonToSeed(json: MnemonicJSON): string {
   return json.seed.join(" ");
 }
 
-
 export function seedStringToArray(seed: string): string[] {
   return seed
     .trim()
     .split(/\s+/)
     .map((w) => w.toLowerCase())
     .filter(Boolean);
+}
+
+/**
+ * Generates a unique, URL-safe ID for an item based on its name and current timestamp.
+ *
+ * @param prefix - The prefix string name to add.
+ * @returns A unique ID string prefixed.
+ */
+export function autogenerateID(prefix: string = "mjkmsg"): string {
+  // Create the generator function ONCE with your custom alphabet and length
+  const generateID = customAlphabet(
+    "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    8
+  );
+
+  // Call the generator function to produce the actual ID string
+  const genUID = generateID(); // Example output: 'G7K2aZp9'
+
+  return `${prefix}-${genUID}`;
 }

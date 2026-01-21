@@ -1,5 +1,11 @@
 export type ISODateString = string;
 
+export type MajikMessageAccountID = string;
+
+export type MajikMessagePublicKey = string;
+
+export type MajikMessageChatID = string;
+
 export interface MAJIK_API_RESPONSE {
   success: boolean;
   message: string;

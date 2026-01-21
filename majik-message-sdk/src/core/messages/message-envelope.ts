@@ -1,4 +1,4 @@
-import {
+import type {
   EnvelopePayload,
   RecipientKeys,
   SingleRecipientPayload,
@@ -54,8 +54,6 @@ export class MessageEnvelope {
   get raw(): ArrayBuffer {
     return this.encryptedBlob;
   }
-
-  
 
   /** Quick validation without throwing */
   static tryFromString(raw: unknown): {

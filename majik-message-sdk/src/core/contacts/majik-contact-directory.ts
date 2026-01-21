@@ -53,7 +53,7 @@ export class MajikContactDirectory {
     }
     if (this.contacts.has(contact.id)) {
       throw new MajikContactDirectoryError(
-        `Contact with id "${contact.id}" already exists`
+        `Contact with id "${contact.id}" already exists`,
       );
     }
     this.contacts.set(contact.id, contact);
@@ -86,7 +86,7 @@ export class MajikContactDirectory {
 
   updateContactMeta(
     id: string,
-    meta: Partial<MajikContactData["meta"]>
+    meta: Partial<MajikContactData["meta"]>,
   ): MajikContact {
     const contact = this.getContact(id);
     if (!contact) throw new MajikContactDirectoryError("Contact not found");
@@ -108,11 +108,34 @@ export class MajikContactDirectory {
   getContactByFingerprint(fingerprint: string): MajikContact | undefined {
     if (!fingerprint) {
       throw new MajikContactDirectoryError(
-        "Fingerprint must be a non-empty string"
+        "Fingerprint must be a non-empty string",
       );
     }
     const contactId = this.fingerprintMap.get(fingerprint);
     return contactId ? this.contacts.get(contactId) : undefined;
+  }
+
+  /**
+   * Get contact by public key (base64)
+   * Uses MajikContact.getPublicKeyBase64() for canonical comparison
+   */
+  async getContactByPublicKeyBase64(
+    publicKeyBase64: string,
+  ): Promise<MajikContact | undefined> {
+    if (!publicKeyBase64 || typeof publicKeyBase64 !== "string") {
+      throw new MajikContactDirectoryError(
+        "Public key must be a non-empty base64 string",
+      );
+    }
+
+    for (const contact of this.contacts.values()) {
+      const contactKey = await contact.getPublicKeyBase64();
+      if (contactKey === publicKeyBase64) {
+        return contact;
+      }
+    }
+
+    return undefined;
   }
 
   hasFingerprint(fingerprint: string): boolean {
@@ -123,7 +146,7 @@ export class MajikContactDirectory {
     const contacts = [...this.contacts.values()];
     if (sortedByLabel) {
       contacts.sort((a, b) =>
-        (a.meta.label || "").localeCompare(b.meta.label || "")
+        (a.meta.label || "").localeCompare(b.meta.label || ""),
       );
     }
     return contacts;
@@ -133,7 +156,7 @@ export class MajikContactDirectory {
     const contact = this.getContact(id);
     if (!contact)
       throw new MajikContactDirectoryError(
-        `Contact with id "${id}" not found for block`
+        `Contact with id "${id}" not found for block`,
       );
     return contact.block();
   }
@@ -142,7 +165,7 @@ export class MajikContactDirectory {
     const contact = this.getContact(id);
     if (!contact)
       throw new MajikContactDirectoryError(
-        `Contact with id "${id}" not found for unblock`
+        `Contact with id "${id}" not found for unblock`,
       );
     return contact.unblock();
   }
@@ -197,7 +220,7 @@ export class MajikContactDirectory {
           raw,
           KEY_ALGO,
           true,
-          []
+          [],
         );
       } catch (e) {
         // Fallback: create a raw-key wrapper when the browser does not support the namedCurve
@@ -208,7 +231,7 @@ export class MajikContactDirectory {
         item.id,
         publicKey as any,
         item.fingerprint,
-        item.meta
+        item.meta,
       );
       this.contacts.set(contact.id, contact);
       this.fingerprintMap.set(contact.fingerprint, contact.id);
@@ -224,7 +247,7 @@ export class MajikContactDirectory {
   private assertId(id: string) {
     if (!id || typeof id !== "string") {
       throw new MajikContactDirectoryError(
-        "Contact ID must be a non-empty string"
+        "Contact ID must be a non-empty string",
       );
     }
   }

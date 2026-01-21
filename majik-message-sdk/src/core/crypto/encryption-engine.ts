@@ -1,7 +1,4 @@
-import {
-  arrayToBase64,
-  base64ToArrayBuffer,
-} from "../utils/utilities";
+import { arrayToBase64, base64ToArrayBuffer } from "../utils/utilities";
 import { mnemonicToSeedSync } from "@scure/bip39";
 import * as ed25519 from "@stablelib/ed25519";
 import ed2curve from "ed2curve";
@@ -15,16 +12,17 @@ import {
   fingerprintFromPublicRaw,
   IV_LENGTH,
 } from "./crypto-provider";
-import { EnvelopePayload, MultiRecipientPayload, SingleRecipientPayload } from "../types";
+import type {
+  EnvelopePayload,
+  MultiRecipientPayload,
+  SingleRecipientPayload,
+} from "../types";
 
 export interface EncryptionIdentity {
   publicKey: CryptoKey | { raw: Uint8Array };
   privateKey: CryptoKey | { raw: Uint8Array };
   fingerprint: string;
 }
-
-
-
 
 /**
  * EncryptionEngine
@@ -167,8 +165,6 @@ export class EncryptionEngine {
 
     return new TextDecoder().decode(plain);
   }
-
-  
 
   /* ================================
    * Group Encryption

@@ -1,4 +1,4 @@
-import { MAJIK_API_RESPONSE } from "../types";
+import type { MAJIK_API_RESPONSE } from "../types";
 import { arrayBufferToBase64, base64ToArrayBuffer } from "../utils/utilities";
 import { MessageEnvelope } from "./message-envelope";
 

@@ -2,23 +2,23 @@
 
 import {
   MajikContact,
-  MajikContactCard,
-  MajikContactMeta,
-  SerializedMajikContact,
+  type MajikContactCard,
+  type MajikContactMeta,
+  type SerializedMajikContact,
 } from "./core/contacts/majik-contact";
 import { KEY_ALGO } from "./core/crypto/constants";
 import { ScannerEngine } from "./core/scanner/scanner-engine";
 import { MessageEnvelope } from "./core/messages/message-envelope";
 import {
   EnvelopeCache,
-  EnvelopeCacheItem,
-  EnvelopeCacheJSON,
+  type EnvelopeCacheItem,
+  type EnvelopeCacheJSON,
 } from "./core/messages/envelope-cache";
 import { EncryptionEngine } from "./core/crypto/encryption-engine";
 import { KeyStore } from "./core/crypto/keystore";
 import {
   MajikContactDirectory,
-  MajikContactDirectoryData,
+  type MajikContactDirectoryData,
 } from "./core/contacts/majik-contact-directory";
 import {
   arrayBufferToBase64,
@@ -30,12 +30,20 @@ import {
 import {
   autoSaveMajikFileData,
   loadSavedMajikFileData,
-} from "../../lib/majik-file-utils";
+} from "./core/utils/majik-file-utils";
 import { randomBytes } from "@stablelib/random";
-import { idbLoadBlob, idbSaveBlob } from "../../lib/idb/idb-majik-system";
-import { MAJIK_API_RESPONSE, MultiRecipientPayload } from "./core/types";
+import { idbLoadBlob, idbSaveBlob } from "./core/utils/idb-majik-system";
+import type { MAJIK_API_RESPONSE, MultiRecipientPayload } from "./core/types";
+import { MajikMessageChat } from "./core/database/chat/majik-message-chat";
+import { MajikCompressor } from "./core/compressor/majik-compressor";
+import { MajikMessageIdentity } from "./core/database/system/identity";
 
 type MajikMessageEvents = "message" | "envelope" | "untrusted" | "error";
+
+interface MajikMessageStatic<T extends MajikMessage> {
+  new (config: MajikMessageConfig, id?: string): T;
+  fromJSON(json: MajikMessageJSON): Promise<T>;
+}
 
 export interface MajikMessageConfig {
   keyStore: KeyStore;
@@ -85,7 +93,7 @@ export class MajikMessage {
 
     // Prepare listeners map
     ["message", "envelope", "untrusted", "error"].forEach((e) =>
-      this.listeners.set(e as MajikMessageEvents, [])
+      this.listeners.set(e as MajikMessageEvents, []),
     );
 
     // Attach autosave handlers so state is persisted automatically
@@ -101,7 +109,7 @@ export class MajikMessage {
    */
   async createAccount(
     passphrase: string,
-    label?: string
+    label?: string,
   ): Promise<{ id: string; fingerprint: string; backup: string }> {
     const identity = await KeyStore.createIdentity(passphrase);
 
@@ -126,7 +134,7 @@ export class MajikMessage {
   async importAccountFromBackup(
     backupBase64: string,
     passphrase: string,
-    label?: string
+    label?: string,
   ): Promise<{ id: string; fingerprint: string }> {
     await KeyStore.importIdentityBackup(backupBase64);
 
@@ -162,7 +170,7 @@ export class MajikMessage {
    */
   async exportAccountMnemonicBackup(
     id: string,
-    mnemonic: string
+    mnemonic: string,
   ): Promise<string> {
     return KeyStore.exportIdentityMnemonicBackup(id, mnemonic);
   }
@@ -174,12 +182,12 @@ export class MajikMessage {
     backupBase64: string,
     mnemonic: string,
     passphrase: string,
-    label?: string
+    label?: string,
   ): Promise<{ id: string; fingerprint: string }> {
     const identity = await KeyStore.importIdentityFromMnemonicBackup(
       backupBase64,
       mnemonic,
-      passphrase
+      passphrase,
     );
 
     const contact = new MajikContact({
@@ -204,11 +212,11 @@ export class MajikMessage {
   async createAccountFromMnemonic(
     mnemonic: string,
     passphrase: string,
-    label?: string
+    label?: string,
   ): Promise<{ id: string; fingerprint: string; backup: string }> {
     const identity = await KeyStore.createIdentityFromMnemonic(
       mnemonic,
-      passphrase
+      passphrase,
     );
 
     const contact = new MajikContact({
@@ -220,7 +228,7 @@ export class MajikMessage {
 
     const backup = await KeyStore.exportIdentityMnemonicBackup(
       identity.id,
-      mnemonic
+      mnemonic,
     );
 
     this.addOwnAccount(contact);
@@ -260,8 +268,16 @@ export class MajikMessage {
   /**
    * Set an active account (moves it to index 0)
    */
-  setActiveAccount(id: string): boolean {
+  async setActiveAccount(id: string): Promise<boolean> {
     if (!this.ownAccounts.has(id)) return false;
+
+    // Ensure identity is unlocked
+    try {
+      await this.ensureIdentityUnlocked(id);
+    } catch (err) {
+      console.warn("Failed to unlock account:", err);
+      return false; // don't set as active if unlock fails
+    }
 
     // Remove ID from current position
     const index = this.ownAccountsOrder.indexOf(id);
@@ -319,6 +335,21 @@ export class MajikMessage {
   }
 
   /**
+   * Retrieve a contact from the directory by its public key.
+   * Validates that the input is a non-empty string.
+   * Returns the MajikContact instance or null if not found.
+   */
+  async getContactByPublicKey(id: string): Promise<MajikContact | null> {
+    if (typeof id !== "string" || !id.trim()) {
+      throw new Error("Invalid contact ID: must be a non-empty string");
+    }
+
+    return (
+      (await this.contactDirectory.getContactByPublicKeyBase64(id)) ?? null
+    );
+  }
+
+  /**
    * Returns a JSON string representation of a contact
    * suitable for sharing.
    */
@@ -334,7 +365,7 @@ export class MajikMessage {
     } else {
       const raw = await crypto.subtle.exportKey(
         "raw",
-        contact.publicKey as CryptoKey
+        contact.publicKey as CryptoKey,
       );
       publicKeyBase64 = arrayBufferToBase64(raw);
     }
@@ -385,7 +416,7 @@ export class MajikMessage {
               rawBuffer,
               KEY_ALGO,
               true,
-              []
+              [],
             );
           } catch (e) {
             // Fallback: create a raw-key wrapper when the browser does not support the namedCurve
@@ -430,7 +461,7 @@ export class MajikMessage {
    */
   async listCachedEnvelopes(
     offset = 0,
-    limit = 50
+    limit = 50,
   ): Promise<EnvelopeCacheItem[]> {
     return await this.envelopeCache.listRecent(offset, limit);
   }
@@ -459,12 +490,12 @@ export class MajikMessage {
    */
   async decryptEnvelope(
     envelope: MessageEnvelope,
-    bypassIdentity: boolean = false
+    bypassIdentity: boolean = false,
   ): Promise<string> {
     const fingerprint = envelope.extractFingerprint();
 
     const authorizedAccount = this.listContacts(true).find(
-      (a) => a.fingerprint === fingerprint
+      (a) => a.fingerprint === fingerprint,
     );
 
     if (!authorizedAccount) {
@@ -497,23 +528,32 @@ export class MajikMessage {
       decrypted = await EncryptionEngine.decryptGroupMessage(
         envelope.extractEncryptedPayload() as MultiRecipientPayload,
         privateKey,
-        fingerprint
+        fingerprint,
       );
     } else {
       decrypted = await EncryptionEngine.decryptSoloMessage(
         envelope.extractEncryptedPayload(),
-        privateKey
+        privateKey,
       );
+    }
+
+    let plaintext: string = decrypted;
+
+    if (decrypted.startsWith("mjkcmp:")) {
+      plaintext = (await MajikCompressor.decompress(
+        "plaintext",
+        decrypted,
+      )) as string;
     }
 
     await this.envelopeCache.set(
       envelope,
       typeof window !== "undefined" && window.location
         ? window.location.hostname
-        : "extension"
+        : "extension",
     );
 
-    return decrypted;
+    return plaintext;
   }
 
   async importContactFromString(base64Str: string): Promise<void> {
@@ -572,7 +612,7 @@ export class MajikMessage {
   async updatePassphrase(
     currentPassphrase: string,
     newPassphrase: string,
-    id?: string
+    id?: string,
   ): Promise<void> {
     // Determine target account
     const targetAccount = id
@@ -581,7 +621,7 @@ export class MajikMessage {
 
     if (!targetAccount) {
       throw new Error(
-        "No target account specified and no active account available"
+        "No target account specified and no active account available",
       );
     }
 
@@ -589,7 +629,7 @@ export class MajikMessage {
     await KeyStore.updatePassphrase(
       targetAccount.id,
       currentPassphrase,
-      newPassphrase
+      newPassphrase,
     );
 
     // Optionally emit an event or autosave
@@ -607,14 +647,14 @@ export class MajikMessage {
   async encryptSoloMessage(
     toId: string,
     plaintext: string,
-    cache: boolean = true
+    cache: boolean = true,
   ): Promise<MessageEnvelope> {
     const contact = this.contactDirectory.getContact(toId);
     if (!contact) throw new Error(`No contact with id "${toId}"`);
 
     const payload = await EncryptionEngine.encryptSoloMessage(
       plaintext,
-      contact.publicKey
+      contact.publicKey,
     );
     const payloadJSON = JSON.stringify(payload);
     const encoder = new TextEncoder();
@@ -623,11 +663,11 @@ export class MajikMessage {
     // Envelope: [version byte][fingerprint][payload]
     const versionByte = new Uint8Array([1]);
     const fingerprintBytes = new Uint8Array(
-      base64ToArrayBuffer(contact.fingerprint)
+      base64ToArrayBuffer(contact.fingerprint),
     );
 
     const blob = new Uint8Array(
-      versionByte.length + fingerprintBytes.length + payloadBytes.length
+      versionByte.length + fingerprintBytes.length + payloadBytes.length,
     );
     blob.set(versionByte, 0);
     blob.set(fingerprintBytes, versionByte.length);
@@ -641,7 +681,7 @@ export class MajikMessage {
         envelope,
         typeof window !== "undefined" && window.location
           ? window.location.hostname
-          : "extension"
+          : "extension",
       );
     }
 
@@ -658,7 +698,7 @@ export class MajikMessage {
   async encryptGroupMessage(
     recipientIds: string[],
     plaintext: string,
-    cache: boolean = true
+    cache: boolean = true,
   ): Promise<MessageEnvelope> {
     if (!recipientIds.length) {
       throw new Error("No recipients provided");
@@ -678,7 +718,7 @@ export class MajikMessage {
     // 🔐 Encrypt once for all recipients
     const payload = await EncryptionEngine.encryptGroupMessage(
       plaintext,
-      recipients
+      recipients,
     );
 
     // Serialize payload
@@ -691,12 +731,12 @@ export class MajikMessage {
     const activeAccount = this.getActiveAccount();
     if (!activeAccount) throw new Error("No active account to send from");
     const fingerprintBytes = new Uint8Array(
-      base64ToArrayBuffer(activeAccount.fingerprint)
+      base64ToArrayBuffer(activeAccount.fingerprint),
     );
 
     // Combine all parts into a single Uint8Array
     const blob = new Uint8Array(
-      versionByte.length + fingerprintBytes.length + payloadBytes.length
+      versionByte.length + fingerprintBytes.length + payloadBytes.length,
     );
     blob.set(versionByte, 0);
     blob.set(fingerprintBytes, versionByte.length);
@@ -711,7 +751,7 @@ export class MajikMessage {
         envelope,
         typeof window !== "undefined" && window.location
           ? window.location.hostname
-          : "extension"
+          : "extension",
       );
     }
 
@@ -723,11 +763,11 @@ export class MajikMessage {
 
   async sendMessage(
     recipients: string[],
-    plaintext: string
+    plaintext: string,
   ): Promise<MessageEnvelope> {
     if (recipients.length === 0 || !recipients) {
       throw new Error(
-        "No recipients provided. At least one recipient is required."
+        "No recipients provided. At least one recipient is required.",
       );
     }
 
@@ -743,12 +783,155 @@ export class MajikMessage {
    * ================================ */
 
   /**
+   * Create a new MajikMessageChat with compression, then encrypt it.
+   * Returns the scanner-ready string containing the encrypted compressed message.
+   *
+   * Flow: Plaintext → Compress (MajikMessageChat) → Encrypt (EncryptionEngine) → Scanner String
+   */
+  async createEncryptedMajikMessageChat(
+    account: MajikMessageIdentity,
+    recipients: string[],
+    plaintext: string,
+    expiresInMs?: number,
+  ): Promise<{ messageChat: MajikMessageChat; scannerString: string }> {
+    if (!plaintext?.trim()) {
+      throw new Error("No text provided to encrypt.");
+    }
+
+    if (!recipients || recipients.length === 0) {
+      const firstOwn = this.listOwnAccounts()[0];
+      if (!firstOwn) {
+        throw new Error("No own account available for encryption.");
+      }
+      recipients = [firstOwn.id];
+    }
+
+    if (!account) {
+      throw new Error("No active account available to send message");
+    }
+
+    try {
+      // Step 1: Create MajikMessageChat (compresses plaintext)
+      const messageChat = await MajikMessageChat.create(
+        account,
+        plaintext,
+        recipients,
+        expiresInMs,
+      );
+
+      // Step 2: Get compressed message for encryption
+      const compressedMessage = messageChat.getCompressedMessage();
+
+      // Step 3: Encrypt the compressed message using EncryptionEngine
+      let encryptedPayload: any;
+
+      if (recipients.length === 1) {
+        // Solo encryption
+        const contact = this.contactDirectory.getContact(recipients[0]);
+        if (!contact) {
+          throw new Error(`No contact found for recipient: ${recipients[0]}`);
+        }
+
+        encryptedPayload = await EncryptionEngine.encryptSoloMessage(
+          compressedMessage,
+          contact.publicKey,
+        );
+      } else {
+        // Group encryption
+        const recipientData = recipients.map((id) => {
+          const contact = this.contactDirectory.getContact(id);
+          if (!contact) {
+            throw new Error(`No contact found for recipient: ${id}`);
+          }
+          return {
+            id: contact.id,
+            publicKey: contact.publicKey,
+          };
+        });
+
+        encryptedPayload = await EncryptionEngine.encryptGroupMessage(
+          compressedMessage,
+          recipientData,
+        );
+      }
+
+      // Step 4: Convert encrypted payload to base64 string
+      const payloadJSON = JSON.stringify(encryptedPayload);
+      const payloadBase64 = utf8ToBase64(payloadJSON);
+
+      // Step 5: Create scanner string with MAJIK prefix
+      const scannerString = `${MessageEnvelope.PREFIX}:${payloadBase64}`;
+
+      // Step 6: Update the messageChat with encrypted payload for storage
+      messageChat.setMessage(payloadJSON); // Store encrypted version
+
+      return { messageChat, scannerString };
+    } catch (err) {
+      this.emit("error", err, { context: "createEncryptedMajikMessageChat" });
+      throw err;
+    }
+  }
+
+  /**
+   * Decrypt and decompress a MajikMessageChat message.
+   *
+   * Flow: Encrypted Payload → Decrypt (EncryptionEngine) → Decompress (MajikCompressor) → Plaintext
+   */
+  async decryptMajikMessageChat(
+    encryptedPayload: string,
+    recipientId?: string,
+  ): Promise<string> {
+    const recipient = recipientId
+      ? this.getOwnAccountById(recipientId)
+      : this.getActiveAccount();
+
+    if (!recipient) {
+      throw new Error("No recipient account found for decryption");
+    }
+
+    try {
+      // Step 1: Ensure identity is unlocked
+      const privateKey = await this.ensureIdentityUnlocked(recipient.id);
+
+      // Step 2: Parse the encrypted payload
+      const payload = JSON.parse(encryptedPayload);
+
+      // Step 3: Decrypt using EncryptionEngine
+      let decryptedCompressed: string;
+
+      if (payload.keys) {
+        // Group message
+        decryptedCompressed = await EncryptionEngine.decryptGroupMessage(
+          payload,
+          privateKey,
+          recipient.fingerprint,
+        );
+      } else {
+        // Solo message
+        decryptedCompressed = await EncryptionEngine.decryptSoloMessage(
+          payload,
+          privateKey,
+        );
+      }
+
+      // Step 4: Decompress the message
+      const plaintext =
+        await MajikCompressor.decompressString(decryptedCompressed);
+
+      return plaintext;
+    } catch (err) {
+      this.emit("error", err, { context: "decryptMajikMessageChat" });
+      throw err;
+    }
+  }
+
+  /**
    * Encrypts currently selected text in the browser DOM for given recipients.
    * If `recipients` is empty, defaults to the first own account.
    * Returns the fully serialized base64 envelope string for the scanner.
    */
   async encryptSelectedTextForScanner(
-    recipients: string[] = []
+    recipients: string[] = [],
   ): Promise<string | null> {
     // Delegate to textarea-agnostic implementation
     const plaintext = window.getSelection()?.toString().trim() ?? "";
@@ -762,7 +945,7 @@ export class MajikMessage {
   async encryptTextForScanner(
     plaintext: string,
     recipients: string[] = [],
-    cache: boolean = true
+    cache: boolean = true,
   ): Promise<string | null> {
     if (!plaintext?.trim()) {
       console.warn("No text provided to encrypt.");
@@ -785,7 +968,7 @@ export class MajikMessage {
         envelope = await this.encryptSoloMessage(
           recipients[0],
           plaintext,
-          cache
+          cache,
         );
       } else {
         // Multiple recipients → unified group message
@@ -808,7 +991,7 @@ export class MajikMessage {
    */
   async encryptForTarget(
     target: string, // can be label or id
-    plaintext: string
+    plaintext: string,
   ): Promise<string | null> {
     const activeAccount = this.getActiveAccount();
     if (!activeAccount) throw new Error("No active account available");
@@ -873,7 +1056,7 @@ export class MajikMessage {
     // must match fingerprint for this device to be able to decrypt.
     const contact = this.contactDirectory.getContactByFingerprint(fingerprint);
     const ownAccount = this.listOwnAccounts().find(
-      (a) => a.fingerprint === fingerprint
+      (a) => a.fingerprint === fingerprint,
     );
 
     // If this envelope isn't addressed to one of our own accounts, mark as untrusted
@@ -897,12 +1080,12 @@ export class MajikMessage {
         decrypted = await EncryptionEngine.decryptGroupMessage(
           envelope.extractEncryptedPayload() as MultiRecipientPayload,
           privateKey,
-          fingerprint
+          fingerprint,
         );
       } else {
         decrypted = await EncryptionEngine.decryptSoloMessage(
           envelope.extractEncryptedPayload(),
-          privateKey
+          privateKey,
         );
       }
       // Cache envelope (record source as current hostname when available)
@@ -910,7 +1093,7 @@ export class MajikMessage {
         envelope,
         typeof window !== "undefined" && window.location
           ? window.location.hostname
-          : "extension"
+          : "extension",
       );
       this.scheduleAutosave();
 
@@ -927,7 +1110,7 @@ export class MajikMessage {
    */
   async ensureIdentityUnlocked(
     id: string,
-    promptFn?: (identityId: string) => string | Promise<string>
+    promptFn?: (identityId: string) => string | Promise<string>,
   ): Promise<CryptoKey | { raw: Uint8Array }> {
     try {
       return await KeyStore.getPrivateKey(id);
@@ -993,18 +1176,21 @@ export class MajikMessage {
     return finalJSON;
   }
 
-  static async fromJSON(json: MajikMessageJSON): Promise<MajikMessage> {
+  static async fromJSON<T extends MajikMessage>(
+    this: new (config: MajikMessageConfig, id?: string) => T,
+    json: MajikMessageJSON,
+  ): Promise<T> {
     const newDirectory = new MajikContactDirectory();
     const parsedContacts = await newDirectory.fromJSON(json.contacts);
     const parsedEnvelopeCache = EnvelopeCache.fromJSON(json.envelopeCache);
 
-    const parsedInstance = new MajikMessage(
+    const parsedInstance = new this(
       {
         contactDirectory: parsedContacts,
         envelopeCache: parsedEnvelopeCache,
         keyStore: KeyStore,
       },
-      json.id
+      json.id,
     );
 
     // Restore ownAccounts if present
@@ -1018,13 +1204,13 @@ export class MajikMessage {
               raw,
               KEY_ALGO,
               true,
-              []
+              [],
             );
             const contact = MajikContact.create(
               (acct as any).id,
               publicKey,
               (acct as any).fingerprint,
-              (acct as any).meta
+              (acct as any).meta,
             );
             parsedInstance.ownAccounts.set(contact.id, contact);
           } catch (e) {
@@ -1033,7 +1219,7 @@ export class MajikMessage {
             console.info(
               "Fallback restoring own account (using raw-key wrapper)",
               (acct as any).id,
-              e
+              e,
             );
           }
         }
@@ -1206,14 +1392,20 @@ export class MajikMessage {
   /**
    * Try to load an existing state from IDB; if none exists, create a fresh instance and save it.
    */
-  static async loadOrCreate(config: MajikMessageConfig): Promise<MajikMessage> {
+  static async loadOrCreate<T extends MajikMessage>(
+    this: MajikMessageStatic<T>,
+    config: MajikMessageConfig,
+  ): Promise<T> {
     try {
       const saved = await idbLoadBlob("majik-message-state");
+
       if (saved?.data) {
         const loaded = await loadSavedMajikFileData(saved.data);
         const parsedJSON = loaded.j as MajikMessageJSON;
-        const instance = await MajikMessage.fromJSON(parsedJSON);
+
+        const instance = (await this.fromJSON(parsedJSON)) as T;
         console.log("Account Loaded Successfully");
+
         instance.attachAutosaveHandlers();
         return instance;
       }
@@ -1221,10 +1413,11 @@ export class MajikMessage {
       console.warn("Error trying to load saved MajikMessage state:", err);
     }
 
-    // No saved state; create new and persist initial state
-    const created = new MajikMessage(config);
+    // No saved state → create new subclass instance
+    const created = new this(config);
     await created.saveState();
     created.attachAutosaveHandlers();
+
     return created;
   }
 }
