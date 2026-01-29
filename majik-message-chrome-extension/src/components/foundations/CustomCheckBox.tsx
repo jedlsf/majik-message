@@ -1,14 +1,12 @@
-'use client';
-
-import React, { useState } from 'react';
-import styled from 'styled-components';
+import React, { useState } from "react";
+import styled from "styled-components";
 
 interface CustomCheckboxProps {
-    label: string;
-    disabled?: boolean;
-    defaultChecked?: boolean;
-    currentValue?: boolean; // Optional prop to control the current value externally
-    onToggle?: (checked: boolean) => void;
+  label: string;
+  disabled?: boolean;
+  defaultChecked?: boolean;
+  currentValue?: boolean; // Optional prop to control the current value externally
+  onToggle?: (checked: boolean) => void;
 }
 
 const ColumnContainer = styled.div`
@@ -36,55 +34,56 @@ const Label = styled.span`
   flex-shrink: 1; /* Prevents shrinking */
 `;
 
-const Checkbox = styled.input.attrs({ type: 'checkbox' })`
+const Checkbox = styled.input.attrs({ type: "checkbox" })`
   margin-right: ${({ theme }) => theme.spacing.small};
   width: 18px;
   height: 18px;
 `;
 
 const CustomCheckbox: React.FC<CustomCheckboxProps> = ({
-    label,
-    disabled = false,
-    defaultChecked = false,
-    currentValue,
-    onToggle,
+  label,
+  disabled = false,
+  defaultChecked = false,
+  currentValue,
+  onToggle,
 }) => {
-    if (!label) {
-        throw new Error('Label is required and must not be null nor empty');
+  if (!label) {
+    throw new Error("Label is required and must not be null nor empty");
+  }
+
+  // Internal state to handle uncontrolled mode
+  const [isChecked, setIsChecked] = useState(defaultChecked);
+
+  // Determine the current value of the checkbox (controlled or uncontrolled)
+  const effectiveChecked =
+    currentValue !== undefined ? currentValue : isChecked;
+
+  const handleToggle = () => {
+    if (!disabled) {
+      const newChecked = !effectiveChecked;
+      // Update local state if not controlled
+      if (currentValue === undefined) {
+        setIsChecked(newChecked);
+      }
+      // Trigger the onToggle callback
+      if (onToggle) {
+        onToggle(newChecked);
+      }
     }
+  };
 
-    // Internal state to handle uncontrolled mode
-    const [isChecked, setIsChecked] = useState(defaultChecked);
-
-    // Determine the current value of the checkbox (controlled or uncontrolled)
-    const effectiveChecked = currentValue !== undefined ? currentValue : isChecked;
-
-    const handleToggle = () => {
-        if (!disabled) {
-            const newChecked = !effectiveChecked;
-            // Update local state if not controlled
-            if (currentValue === undefined) {
-                setIsChecked(newChecked);
-            }
-            // Trigger the onToggle callback
-            if (onToggle) {
-                onToggle(newChecked);
-            }
-        }
-    };
-
-    return (
-        <ColumnContainer>
-            <RowContainer>
-                <Checkbox
-                    checked={effectiveChecked}
-                    onChange={handleToggle}
-                    disabled={disabled}
-                />
-                <Label>{label}</Label>
-            </RowContainer>
-        </ColumnContainer>
-    );
+  return (
+    <ColumnContainer>
+      <RowContainer>
+        <Checkbox
+          checked={effectiveChecked}
+          onChange={handleToggle}
+          disabled={disabled}
+        />
+        <Label>{label}</Label>
+      </RowContainer>
+    </ColumnContainer>
+  );
 };
 
 export default CustomCheckbox;

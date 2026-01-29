@@ -1,12 +1,8 @@
-'use client';
-
-import React from 'react';
-import styled from 'styled-components';
-
-
+import React from "react";
+import styled from "styled-components";
 
 const ButtonPrimaryConfirm = styled.div`
-display: flex;
+  display: flex;
   font-family: ${({ theme }) => theme.typography.fonts.regular};
   padding: 0.75rem 2rem;
   background-color: ${({ theme }) => theme.colors.secondaryBackground};
@@ -30,7 +26,7 @@ display: flex;
     background-color: ${({ theme }) => theme.colors.primary};
     border-color: ${({ theme }) => theme.colors.primary};
     color: ${({ theme }) => theme.colors.primaryBackground};
-    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.30);
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
     width: 150px;
     font-weight: 500;
     font-size: 18px;
@@ -38,7 +34,6 @@ display: flex;
     justify-content: space-between;
   }
 
-  
   &:disabled {
     background-color: ${({ theme }) => theme.colors.secondaryBackground};
     border-color: ${({ theme }) => theme.colors.secondaryBackground};
@@ -46,7 +41,7 @@ display: flex;
     cursor: not-allowed;
   }
 
-    &:focus,
+  &:focus,
   &:active {
     outline: none;
     color: ${({ theme }) => theme.colors.primaryBackground};
@@ -55,7 +50,6 @@ display: flex;
   }
 `;
 
-
 const TextContainer = styled.p`
   opacity: 0;
   visibility: hidden;
@@ -63,8 +57,8 @@ const TextContainer = styled.p`
   width: 0px;
   font-size: 0px;
 
-     text-overflow: ellipsis;
-   overflow: hidden;
+  text-overflow: ellipsis;
+  overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 1; /* Limit to 3 lines */
   -webkit-box-orient: vertical;
@@ -75,7 +69,6 @@ const TextContainer = styled.p`
     visibility: visible;
     width: auto;
     font-size: 14px;
-
   }
 `;
 
@@ -87,13 +80,13 @@ interface GoBackButtonProps {
   strict?: boolean;
 }
 
-
-const GoBackButton: React.FC<GoBackButtonProps> = ({ onClick, text = "Go Back" }) => {
-
+const GoBackButton: React.FC<GoBackButtonProps> = ({
+  onClick,
+  text = "Go Back",
+}) => {
   const handleOnClick = () => {
     onClick?.();
   };
-
 
   return (
     <>
@@ -101,7 +94,6 @@ const GoBackButton: React.FC<GoBackButtonProps> = ({ onClick, text = "Go Back" }
         {`<`}
         <TextContainer>{text}</TextContainer>
       </ButtonPrimaryConfirm>
-
     </>
   );
 };

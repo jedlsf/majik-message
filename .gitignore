@@ -1,2 +1,15 @@
 majik-message-api
-majik-message-desktop
+majik-message-desktop/src/renderer/src/utils
+majik-message-desktop/src/renderer/src/SDK
+majik-message-desktop/src/renderer/src/redux
+majik-message-desktop/src/renderer/src/lib
+
+
+majik-message-desktop/src/renderer/src/components/majik-context-wrapper
+majik-message-desktop/src/renderer/src/components/majikah-session-wrapper
+majik-message-desktop/src/renderer/src/components/majikah-notification-wrapper
+majik-message-desktop/.env
+majik-message-desktop/src/main
+
+majik-message-desktop/package.json
+majik-message-desktop/package-lock.json

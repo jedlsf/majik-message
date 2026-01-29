@@ -32,13 +32,26 @@ import {
   loadSavedMajikFileData,
 } from "./core/utils/majik-file-utils";
 import { randomBytes } from "@stablelib/random";
-import { idbLoadBlob, idbSaveBlob } from "./core/utils/idb-majik-system";
+import {
+  clearAllBlobs,
+  idbLoadBlob,
+  idbSaveBlob,
+} from "./core/utils/idb-majik-system";
 import type { MAJIK_API_RESPONSE, MultiRecipientPayload } from "./core/types";
 import { MajikMessageChat } from "./core/database/chat/majik-message-chat";
 import { MajikCompressor } from "./core/compressor/majik-compressor";
 import { MajikMessageIdentity } from "./core/database/system/identity";
 
-type MajikMessageEvents = "message" | "envelope" | "untrusted" | "error";
+type MajikMessageEvents =
+  | "message"
+  | "envelope"
+  | "untrusted"
+  | "error"
+  | "new-account"
+  | "new-contact"
+  | "removed-account"
+  | "removed-contact"
+  | "active-account-change";
 
 interface MajikMessageStatic<T extends MajikMessage> {
   new (config: MajikMessageConfig, id?: string): T;
@@ -64,6 +77,8 @@ export interface MajikMessageJSON {
 type EventCallback = (...args: any[]) => void;
 
 export class MajikMessage {
+  private userProfile: string = "default";
+
   // Optional PIN protection (hashed). If set, UI should prompt for PIN to unlock.
   private pinHash?: string | null = null;
   private id: string;
@@ -76,12 +91,20 @@ export class MajikMessage {
   private autosaveTimer: number | null = null;
   private autosaveIntervalMs = 15000; // periodic backup interval
   private autosaveDebounceMs = 500; // debounce for rapid changes
+  private unlocked = false;
 
-  constructor(config: MajikMessageConfig, id?: string) {
+  constructor(
+    config: MajikMessageConfig,
+    id?: string,
+    userProfile: string = "default",
+  ) {
+    this.userProfile = userProfile || "default";
+
     this.id = id || arrayToBase64(randomBytes(32));
     this.contactDirectory =
       config.contactDirectory || new MajikContactDirectory();
-    this.envelopeCache = config.envelopeCache || new EnvelopeCache();
+    this.envelopeCache =
+      config.envelopeCache || new EnvelopeCache(undefined, userProfile);
 
     // Initialize scanner
     this.scanner = new ScannerEngine({
@@ -92,9 +115,17 @@ export class MajikMessage {
     });
 
     // Prepare listeners map
-    ["message", "envelope", "untrusted", "error"].forEach((e) =>
-      this.listeners.set(e as MajikMessageEvents, []),
-    );
+    [
+      "message",
+      "envelope",
+      "untrusted",
+      "error",
+      "new-account",
+      "new-contact",
+      "removed-account",
+      "removed-contact",
+      "active-account-change",
+    ].forEach((e) => this.listeners.set(e as MajikMessageEvents, []));
 
     // Attach autosave handlers so state is persisted automatically
     this.attachAutosaveHandlers();
@@ -248,16 +279,28 @@ export class MajikMessage {
       if (!this.contactDirectory.hasContact(account.id)) {
         this.contactDirectory.addContact(account);
       }
+      if (!this.getActiveAccount()) {
+        this.setActiveAccount(account.id);
+        this.unlocked = true;
+      }
+      this.emit("new-account", account);
     } catch (e) {
       // ignore if contact can't be added
     }
     this.scheduleAutosave();
   }
 
-  listOwnAccounts(): MajikContact[] {
-    const userAccounts = this.ownAccountsOrder
+  listOwnAccounts(majikahOnly: boolean = false): MajikContact[] {
+    let userAccounts = this.ownAccountsOrder
       .map((id) => this.ownAccounts.get(id))
       .filter((c): c is MajikContact => !!c);
+
+    if (majikahOnly) {
+      userAccounts = userAccounts.filter((acct) =>
+        this.isContactMajikahRegistered(acct.id),
+      );
+    }
+
     return userAccounts;
   }
 
@@ -268,16 +311,23 @@ export class MajikMessage {
   /**
    * Set an active account (moves it to index 0)
    */
-  async setActiveAccount(id: string): Promise<boolean> {
+  async setActiveAccount(
+    id: string,
+    bypassIdentity: boolean = false,
+  ): Promise<boolean> {
     if (!this.ownAccounts.has(id)) return false;
 
-    // Ensure identity is unlocked
-    try {
-      await this.ensureIdentityUnlocked(id);
-    } catch (err) {
-      console.warn("Failed to unlock account:", err);
-      return false; // don't set as active if unlock fails
+    if (!bypassIdentity) {
+      // Ensure identity is unlocked
+      try {
+        await this.ensureIdentityUnlocked(id);
+      } catch (err) {
+        console.warn("Failed to unlock account:", err);
+        return false; // don't set as active if unlock fails
+      }
     }
+
+    const previousActive = this.getActiveAccount()?.id;
 
     // Remove ID from current position
     const index = this.ownAccountsOrder.indexOf(id);
@@ -286,6 +336,12 @@ export class MajikMessage {
     // Add to the front
     this.ownAccountsOrder.unshift(id);
     this.scheduleAutosave();
+
+    // 🔔 Emit the active account changed event
+    if (previousActive !== id) {
+      const newActive = this.getActiveAccount();
+      this.emit("active-account-change", newActive, previousActive);
+    }
     return true;
   }
 
@@ -313,6 +369,7 @@ export class MajikMessage {
     this.envelopeCache.deleteByFingerprint(id).catch((error) => {
       console.warn("Account not found in cache: ", error);
     });
+    this.emit("removed-account", id);
     this.scheduleAutosave();
     return true;
   }
@@ -492,68 +549,82 @@ export class MajikMessage {
     envelope: MessageEnvelope,
     bypassIdentity: boolean = false,
   ): Promise<string> {
-    const fingerprint = envelope.extractFingerprint();
-
-    const authorizedAccount = this.listContacts(true).find(
-      (a) => a.fingerprint === fingerprint,
-    );
-
-    if (!authorizedAccount) {
-      throw new Error("No matching own account to decrypt this envelope");
-    }
-
-    let privateKey: CryptoKey | { raw: Uint8Array };
-
-    if (bypassIdentity) {
-      const activeAccount = this.getActiveAccount();
-      if (!activeAccount) {
-        throw new Error("No active account available to bypass identity check");
-      }
-      privateKey = await KeyStore.getPrivateKey(activeAccount.id);
-    } else {
-      privateKey = await this.ensureIdentityUnlocked(authorizedAccount.id);
-    }
-    if (!privateKey) {
-      throw new Error("No private key found for this fingerprint.");
-    }
-
-    let decrypted: string;
-
     if (envelope.isGroup()) {
-      const recipientKey = envelope.getRecipientKey(fingerprint);
-      if (!recipientKey) {
-        throw new Error("No recipient key found for this fingerprint");
+      // Group message - try all own accounts
+      const ownAccounts = this.listOwnAccounts();
+
+      if (ownAccounts.length === 0) {
+        throw new Error("No own accounts available to decrypt group message");
       }
 
-      decrypted = await EncryptionEngine.decryptGroupMessage(
-        envelope.extractEncryptedPayload() as MultiRecipientPayload,
-        privateKey,
-        fingerprint,
-      );
+      for (const ownAccount of ownAccounts) {
+        try {
+          const privateKey = await this.ensureIdentityUnlocked(ownAccount.id);
+
+          const decrypted = await EncryptionEngine.decryptGroupMessage(
+            envelope.extractEncryptedPayload() as MultiRecipientPayload,
+            privateKey,
+            ownAccount.fingerprint,
+          );
+
+          // Decompress if needed
+          let plaintext = decrypted;
+          if (decrypted.startsWith("mjkcmp:")) {
+            plaintext = (await MajikCompressor.decompress(
+              "plaintext",
+              decrypted,
+            )) as string;
+          }
+
+          await this.envelopeCache.set(
+            envelope,
+            typeof window !== "undefined" && window.location
+              ? window.location.hostname
+              : "extension",
+          );
+
+          return plaintext;
+        } catch (err) {
+          // This account can't decrypt, try next
+          continue;
+        }
+      }
+
+      throw new Error("None of your accounts can decrypt this group message");
     } else {
-      decrypted = await EncryptionEngine.decryptSoloMessage(
+      // Solo message - original logic
+      const fingerprint = envelope.extractFingerprint();
+      const ownAccount = this.listOwnAccounts().find(
+        (a) => a.fingerprint === fingerprint,
+      );
+
+      if (!ownAccount) {
+        throw new Error("No matching account to decrypt this envelope");
+      }
+
+      const privateKey = await this.ensureIdentityUnlocked(ownAccount.id);
+      const decrypted = await EncryptionEngine.decryptSoloMessage(
         envelope.extractEncryptedPayload(),
         privateKey,
       );
+
+      let plaintext = decrypted;
+      if (decrypted.startsWith("mjkcmp:")) {
+        plaintext = (await MajikCompressor.decompress(
+          "plaintext",
+          decrypted,
+        )) as string;
+      }
+
+      await this.envelopeCache.set(
+        envelope,
+        typeof window !== "undefined" && window.location
+          ? window.location.hostname
+          : "extension",
+      );
+
+      return plaintext;
     }
-
-    let plaintext: string = decrypted;
-
-    if (decrypted.startsWith("mjkcmp:")) {
-      plaintext = (await MajikCompressor.decompress(
-        "plaintext",
-        decrypted,
-      )) as string;
-    }
-
-    await this.envelopeCache.set(
-      envelope,
-      typeof window !== "undefined" && window.location
-        ? window.location.hostname
-        : "extension",
-    );
-
-    return plaintext;
   }
 
   async importContactFromString(base64Str: string): Promise<void> {
@@ -565,6 +636,7 @@ export class MajikMessage {
 
   addContact(contact: MajikContact): void {
     this.contactDirectory.addContact(contact);
+    this.emit("new-contact", contact);
     this.scheduleAutosave();
   }
 
@@ -573,6 +645,7 @@ export class MajikMessage {
     if (!removalStatus.success) {
       throw new Error(removalStatus.message);
     }
+    this.emit("removed-contact", id);
     this.scheduleAutosave();
   }
 
@@ -591,17 +664,32 @@ export class MajikMessage {
     this.scheduleAutosave();
   }
 
-  listContacts(all: boolean = true): MajikContact[] {
-    const contacts = this.contactDirectory.listContacts(true);
+  listContacts(
+    all: boolean = true,
+    majikahOnly: boolean = false,
+  ): MajikContact[] {
+    const contacts = this.contactDirectory.listContacts(true, majikahOnly);
 
     if (all) {
       return contacts;
     }
 
-    const userAccounts = this.listOwnAccounts();
+    const userAccounts = this.listOwnAccounts(majikahOnly);
     const userAccountIds = new Set(userAccounts.map((a) => a.id));
 
     return contacts.filter((contact) => !userAccountIds.has(contact.id));
+  }
+
+  isContactMajikahRegistered(id: string): boolean {
+    return this.contactDirectory.isMajikahRegistered(id);
+  }
+  isContactMajikahIdentityChecked(id: string): boolean {
+    return this.contactDirectory.isMajikahIdentityChecked(id);
+  }
+
+  setContactMajikahStatus(id: string, status: boolean): void {
+    this.contactDirectory.setMajikahStatus(id, status);
+    this.scheduleAutosave();
   }
 
   /**
@@ -727,20 +815,24 @@ export class MajikMessage {
     // Envelope structure: [version byte][sender fingerprint][payload bytes]
     const versionByte = new Uint8Array([2]);
 
-    // Use sender fingerprint for group envelope
-    const activeAccount = this.getActiveAccount();
-    if (!activeAccount) throw new Error("No active account to send from");
-    const fingerprintBytes = new Uint8Array(
-      base64ToArrayBuffer(activeAccount.fingerprint),
-    );
+    // // Use sender fingerprint for group envelope
+    // const activeAccount = this.getActiveAccount();
+    // if (!activeAccount) throw new Error("No active account to send from");
+    // const fingerprintBytes = new Uint8Array(
+    //   base64ToArrayBuffer(activeAccount.fingerprint),
+    // );
+
+    // ✅ Use a special marker instead of a specific fingerprint
+    // Option 1: All zeros to indicate "multi-recipient"
+    const markerBytes = new Uint8Array(32).fill(0);
 
     // Combine all parts into a single Uint8Array
     const blob = new Uint8Array(
-      versionByte.length + fingerprintBytes.length + payloadBytes.length,
+      versionByte.length + markerBytes.length + payloadBytes.length,
     );
     blob.set(versionByte, 0);
-    blob.set(fingerprintBytes, versionByte.length);
-    blob.set(payloadBytes, versionByte.length + fingerprintBytes.length);
+    blob.set(markerBytes, versionByte.length);
+    blob.set(payloadBytes, versionByte.length + markerBytes.length);
 
     // Wrap as MessageEnvelope
     const envelope = new MessageEnvelope(blob.buffer);
@@ -1038,6 +1130,24 @@ export class MajikMessage {
     this.listeners.get(event)?.push(callback);
   }
 
+  /**
+   * Remove a previously registered event listener.
+   * If `callback` is omitted, all listeners for the event are removed.
+   */
+  off(event: MajikMessageEvents, callback?: EventCallback): void {
+    const callbacks = this.listeners.get(event);
+    if (!callbacks || callbacks.length === 0) return;
+
+    if (callback) {
+      // Remove only the specific callback
+      const index = callbacks.indexOf(callback);
+      if (index !== -1) callbacks.splice(index, 1);
+    } else {
+      // Remove all callbacks for this event
+      this.listeners.set(event, []);
+    }
+  }
+
   private emit(event: MajikMessageEvents, ...args: any[]): void {
     this.listeners.get(event)?.forEach((cb) => cb(...args));
   }
@@ -1052,54 +1162,86 @@ export class MajikMessage {
     if (cached) return;
 
     const fingerprint = envelope.extractFingerprint();
-    // contact is the directory entry (useful for metadata); ownAccount
-    // must match fingerprint for this device to be able to decrypt.
-    const contact = this.contactDirectory.getContactByFingerprint(fingerprint);
-    const ownAccount = this.listOwnAccounts().find(
-      (a) => a.fingerprint === fingerprint,
-    );
 
-    // If this envelope isn't addressed to one of our own accounts, mark as untrusted
-    if (!ownAccount) {
-      this.emit("untrusted", envelope);
-      return;
-    }
+    // Check if this is a group message (all zeros or special marker)
+    const isGroupMessage = envelope.isGroup();
 
-    try {
-      // Ensure identity unlocked; try interactive prompt if needed
-      const privateKey = await this.ensureIdentityUnlocked(ownAccount.id);
+    if (isGroupMessage) {
+      // For group messages, try all own accounts until one works
+      const ownAccounts = this.listOwnAccounts();
 
-      let decrypted: string;
-
-      if (envelope.isGroup()) {
-        const recipientKey = envelope.getRecipientKey(fingerprint);
-        if (!recipientKey) {
-          throw new Error("No recipient key found for this fingerprint");
-        }
-
-        decrypted = await EncryptionEngine.decryptGroupMessage(
-          envelope.extractEncryptedPayload() as MultiRecipientPayload,
-          privateKey,
-          fingerprint,
-        );
-      } else {
-        decrypted = await EncryptionEngine.decryptSoloMessage(
-          envelope.extractEncryptedPayload(),
-          privateKey,
-        );
+      if (ownAccounts.length === 0) {
+        this.emit("untrusted", envelope);
+        return;
       }
-      // Cache envelope (record source as current hostname when available)
+
+      let decrypted: string | null = null;
+      let successfulAccount: MajikContact | null = null;
+
+      for (const ownAccount of ownAccounts) {
+        try {
+          const privateKey = await this.ensureIdentityUnlocked(ownAccount.id);
+
+          // Try to decrypt with this account
+          decrypted = await EncryptionEngine.decryptGroupMessage(
+            envelope.extractEncryptedPayload() as MultiRecipientPayload,
+            privateKey,
+            ownAccount.fingerprint, // Use THIS account's fingerprint
+          );
+
+          successfulAccount = ownAccount;
+          break; // Success! Stop trying other accounts
+        } catch (err) {
+          // This account doesn't have access, try next one
+          continue;
+        }
+      }
+
+      if (!decrypted || !successfulAccount) {
+        this.emit("untrusted", envelope);
+        return;
+      }
+
+      // Cache and emit
       await this.envelopeCache.set(
         envelope,
         typeof window !== "undefined" && window.location
           ? window.location.hostname
           : "extension",
       );
-      this.scheduleAutosave();
 
-      this.emit("message", decrypted, envelope, contact);
-    } catch (err) {
-      this.emit("error", err, { envelope });
+      this.scheduleAutosave();
+      this.emit("message", decrypted, envelope, successfulAccount);
+    } else {
+      // Solo message - original logic
+      const ownAccount = this.listOwnAccounts().find(
+        (a) => a.fingerprint === fingerprint,
+      );
+
+      if (!ownAccount) {
+        this.emit("untrusted", envelope);
+        return;
+      }
+
+      try {
+        const privateKey = await this.ensureIdentityUnlocked(ownAccount.id);
+        const decrypted = await EncryptionEngine.decryptSoloMessage(
+          envelope.extractEncryptedPayload(),
+          privateKey,
+        );
+
+        await this.envelopeCache.set(
+          envelope,
+          typeof window !== "undefined" && window.location
+            ? window.location.hostname
+            : "extension",
+        );
+
+        this.scheduleAutosave();
+        this.emit("message", decrypted, envelope, ownAccount);
+      } catch (err) {
+        this.emit("error", err, { envelope });
+      }
     }
   }
 
@@ -1133,12 +1275,20 @@ export class MajikMessage {
         passphrase = window.prompt("Enter passphrase to unlock identity:", "");
       }
 
-      if (!passphrase) throw new Error("Unlock cancelled");
+      if (!passphrase) {
+        this.unlocked = false;
+        throw new Error("Unlock cancelled");
+      }
 
       // Attempt to unlock
       await KeyStore.unlockIdentity(id, passphrase);
+      this.unlocked = true;
       return await KeyStore.getPrivateKey(id);
     }
+  }
+
+  isUnlocked(): boolean {
+    return this.unlocked;
   }
 
   async isPassphraseValid(passphrase: string, id?: string): Promise<boolean> {
@@ -1362,7 +1512,7 @@ export class MajikMessage {
     try {
       const jsonDocument = await this.toJSON();
       const autosaveBlob = autoSaveMajikFileData(jsonDocument);
-      await idbSaveBlob("majik-message-state", autosaveBlob);
+      await idbSaveBlob("majik-message-state", autosaveBlob, this.userProfile);
     } catch (err) {
       console.error("Failed to save MajikMessage state:", err);
     }
@@ -1371,7 +1521,10 @@ export class MajikMessage {
   /** Load state from IndexedDB and apply to this instance. */
   async loadState(): Promise<void> {
     try {
-      const autosaveData = await idbLoadBlob("majik-message-state");
+      const autosaveData = await idbLoadBlob(
+        "majik-message-state",
+        this.userProfile,
+      );
       if (!autosaveData?.data) return;
       const blobFile = autosaveData.data;
       const loadedData = await loadSavedMajikFileData(blobFile);
@@ -1395,9 +1548,10 @@ export class MajikMessage {
   static async loadOrCreate<T extends MajikMessage>(
     this: MajikMessageStatic<T>,
     config: MajikMessageConfig,
+    userProfile: string = "default",
   ): Promise<T> {
     try {
-      const saved = await idbLoadBlob("majik-message-state");
+      const saved = await idbLoadBlob("majik-message-state", userProfile);
 
       if (saved?.data) {
         const loaded = await loadSavedMajikFileData(saved.data);
@@ -1419,5 +1573,69 @@ export class MajikMessage {
     created.attachAutosaveHandlers();
 
     return created;
+  }
+
+  /**
+   * Reset all data to a fresh state.
+   * Clears cache, own accounts, contact directory, keystore, and saved data.
+   * WARNING: This operation is irreversible and will delete all user data.
+   */
+  async resetData(userProfile: string = "default"): Promise<void> {
+    try {
+      // 1. Clear envelope cache
+      await this.clearCachedEnvelopes();
+
+      // 2. Clear all own accounts from keystore
+      const accountIds = [...this.ownAccountsOrder];
+      for (const id of accountIds) {
+        try {
+          // Delete from KeyStore storage
+          await KeyStore.deleteIdentity?.(id).catch(() => {});
+        } catch (e) {
+          console.warn(`Failed to delete identity ${id} from KeyStore:`, e);
+        }
+      }
+
+      // 3. Clear own accounts map and order
+      this.ownAccounts.clear();
+      this.ownAccountsOrder = [];
+
+      // 4. Clear contact directory
+
+      try {
+        this.contactDirectory.clear();
+      } catch (e) {
+        console.warn(`Failed to clear contacts directory: `, e);
+      }
+
+      // 5. Clear PIN hash
+      this.pinHash = null;
+
+      // 6. Reset unlocked state
+      this.unlocked = false;
+
+      // 7. Clear saved state from IndexedDB
+      try {
+        await clearAllBlobs(userProfile);
+      } catch (e) {
+        console.warn("Failed to clear saved state from IndexedDB:", e);
+      }
+
+      // 8. Generate new ID for fresh instance
+      this.id = arrayToBase64(randomBytes(32));
+
+      // 9. Stop and restart autosave to ensure clean state
+      this.stopAutosave();
+      this.startAutosave();
+
+      this.emit("active-account-change", null);
+
+      console.log("MajikMessage data reset successfully");
+    } catch (err) {
+      console.error("Error during resetData:", err);
+      throw new Error(
+        `Failed to reset data: ${err instanceof Error ? err.message : err}`,
+      );
+    }
   }
 }

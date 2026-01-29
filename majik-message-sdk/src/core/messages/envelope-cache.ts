@@ -51,6 +51,8 @@ export interface EnvelopeCacheItem {
  * EnvelopeCache
  * ------------------------------- */
 export class EnvelopeCache {
+  private userProfile: string = "default";
+
   private dbPromise: Promise<IDBDatabase>;
   private dbName: string;
   private storeName: string;
@@ -60,12 +62,14 @@ export class EnvelopeCache {
   private memoryCache: Map<string, MessageEnvelope>;
   private memoryCacheSize: number;
 
-  constructor(config?: EnvelopeCacheConfig) {
-    this.dbName = config?.dbName || "MajikEnvelopeDB";
+  constructor(config?: EnvelopeCacheConfig, userProfile: string = "default") {
+    this.dbName = config?.dbName || `MajikEnvelopeDB_${userProfile}`;
     this.storeName = config?.storeName || "envelopes";
     this.maxEntries = config?.maxEntries;
     this.memoryCacheSize = config?.memoryCacheSize || 100;
     this.memoryCache = new Map();
+
+    this.userProfile = userProfile || "default";
 
     this.dbPromise = this.initDB();
   }
@@ -88,7 +92,7 @@ export class EnvelopeCache {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () =>
         reject(
-          new EnvelopeCacheError("Failed to open IndexedDB", request.error)
+          new EnvelopeCacheError("Failed to open IndexedDB", request.error),
         );
     });
   }
@@ -99,7 +103,7 @@ export class EnvelopeCache {
   private async getEnvelopeId(envelope: MessageEnvelope): Promise<string> {
     const hashBuffer = await crypto.subtle.digest(
       "SHA-256",
-      envelope.encryptedBlob
+      envelope.encryptedBlob,
     );
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -189,7 +193,10 @@ export class EnvelopeCache {
         };
         req.onerror = () =>
           reject(
-            new EnvelopeCacheError("Failed to list recent envelopes", req.error)
+            new EnvelopeCacheError(
+              "Failed to list recent envelopes",
+              req.error,
+            ),
           );
       });
     } catch (err) {
@@ -237,7 +244,7 @@ export class EnvelopeCache {
           req.onsuccess = () => resolve(req.result?.envelope);
           req.onerror = () =>
             reject(new EnvelopeCacheError("Failed to get envelope", req.error));
-        }
+        },
       );
     } catch (err) {
       console.error("EnvelopeCache getById error:", err);
@@ -288,7 +295,7 @@ export class EnvelopeCache {
         req.onsuccess = () => resolve();
         req.onerror = () =>
           reject(
-            new EnvelopeCacheError("Failed to delete envelope", req.error)
+            new EnvelopeCacheError("Failed to delete envelope", req.error),
           );
       });
     } catch (err) {
@@ -330,8 +337,8 @@ export class EnvelopeCache {
           reject(
             new EnvelopeCacheError(
               "Failed to iterate envelopes",
-              cursorReq.error
-            )
+              cursorReq.error,
+            ),
           );
       });
 
@@ -342,7 +349,7 @@ export class EnvelopeCache {
           req.onsuccess = () => resolve();
           req.onerror = () =>
             reject(
-              new EnvelopeCacheError("Failed to delete envelope", req.error)
+              new EnvelopeCacheError("Failed to delete envelope", req.error),
             );
         });
 
@@ -372,7 +379,7 @@ export class EnvelopeCache {
         req.onsuccess = () => resolve();
         req.onerror = () =>
           reject(
-            new EnvelopeCacheError("Failed to clear envelope cache", req.error)
+            new EnvelopeCacheError("Failed to clear envelope cache", req.error),
           );
       });
     } catch (err) {
@@ -466,7 +473,7 @@ export class EnvelopeCache {
     const cache = new EnvelopeCache(json.config);
     for (const item of json.items) {
       const envelope = new MessageEnvelope(
-        base64ToArrayBuffer(item.base64Payload)
+        base64ToArrayBuffer(item.base64Payload),
       );
       cache.memoryCache.set(item.id, envelope);
     }

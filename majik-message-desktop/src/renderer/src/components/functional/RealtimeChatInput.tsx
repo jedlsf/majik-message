@@ -1,0 +1,154 @@
+import { useCallback, useRef, useState } from 'react'
+import styled from 'styled-components'
+import { toast } from 'sonner'
+import { ChatInputBox } from './ChatInputBox'
+import type { MajikMessagePublicKey } from '@thezelijah/majik-message'
+import { useMajikMessageRealtime } from '../majikah-session-wrapper/messages/use-majik-message-realtime'
+import { isDevEnvironment } from '@renderer/utils/utils'
+import type { MajikMessageDatabase } from '../majik-context-wrapper/majik-message-database'
+
+/* ======================================================
+ * Styled Components
+ * ====================================================== */
+
+const InputWrapper = styled.div`
+  display: flex;
+  align-items: flex-end;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: ${({ theme }) => theme.colors.secondaryBackground};
+  position: relative;
+  flex: 1;
+`
+
+/* ======================================================
+ * Component
+ * ====================================================== */
+
+interface RealtimeChatInputProps {
+  majik: MajikMessageDatabase
+  onUpdate?: (text: string) => void
+  maxHeight?: number
+  disabled?: boolean
+  conversationID: string
+  participants: string[]
+}
+
+export const RealtimeChatInput: React.FC<RealtimeChatInputProps> = ({
+  majik,
+  onUpdate,
+  maxHeight = 200,
+  participants = [],
+  conversationID
+}) => {
+  const client = useMajikMessageRealtime()
+  const [value, setValue] = useState('')
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const isTypingRef = useRef(false)
+
+  const processSend = async (
+    senderPublicKey: MajikMessagePublicKey,
+    text: string
+  ): Promise<string> => {
+    if (isDevEnvironment()) console.log('Sending message from: ', senderPublicKey)
+
+    if (!text?.trim()) {
+      throw new Error('A valid message is required.')
+    }
+
+    if (!senderPublicKey?.trim()) {
+      throw new Error('A valid sender public key is required.')
+    }
+
+    if (!conversationID?.trim()) {
+      throw new Error('Select a conversation first.')
+    }
+
+    const recipients = participants.filter((account) => !account.includes(senderPublicKey))
+
+    client.sendMessage(text, recipients)
+    return `Message sent!`
+  }
+
+  const handleSend = async (): Promise<void> => {
+    const activeAccount = majik.getActiveAccount()
+    if (!activeAccount) return
+
+    const currentUserPublicKey = await activeAccount.getPublicKeyBase64()
+
+    if (!conversationID?.trim()) {
+      toast.error('Select a conversation first.')
+      return
+    }
+
+    toast.promise(processSend(currentUserPublicKey, value), {
+      loading: `Sending message...`,
+      success: (outputMessage) => {
+        setTimeout(() => {
+          // Clear typing indicator when message is sent
+          if (isTypingRef.current) {
+            isTypingRef.current = false
+            client.setTyping(false)
+          }
+
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current)
+            typingTimeoutRef.current = null
+          }
+        }, 1000)
+
+        return outputMessage
+      },
+      error: (error) => {
+        return `${error.message}`
+      }
+    })
+  }
+
+  const handleChange = useCallback(
+    (input: string) => {
+      if (!input?.trim()) {
+        setValue('')
+        onUpdate?.('')
+        return
+      }
+
+      // Send typing indicator when user starts typing
+      if (input && !isTypingRef.current) {
+        isTypingRef.current = true
+        client.setTyping(true)
+      }
+
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+        typingTimeoutRef.current = null
+      }
+
+      // Set timeout to stop typing indicator after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        if (isTypingRef.current) {
+          isTypingRef.current = false
+          client.setTyping(false)
+        }
+      }, 2000)
+
+      setValue(input)
+      onUpdate?.(input)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [client]
+  )
+
+  return (
+    <InputWrapper>
+      <ChatInputBox
+        onSend={handleSend}
+        onUpdate={handleChange}
+        disabled={!participants || participants.length <= 0}
+        maxHeight={maxHeight}
+      />
+    </InputWrapper>
+  )
+}

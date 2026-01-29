@@ -1,5 +1,3 @@
-"use client";
-
 import React, {
   useState,
   useEffect,
@@ -10,8 +8,6 @@ import React, {
 } from "react";
 import styled from "styled-components";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
-
-
 
 import { FileJsonIcon } from "lucide-react";
 import { ClipboardIcon, TextAaIcon } from "@phosphor-icons/react";
@@ -25,7 +21,6 @@ const InputWrapper = styled.div`
   display: flex;
   flex-direction: column;
   width: inherit;
-
 `;
 
 const LabelRowContainer = styled.div`
@@ -36,9 +31,8 @@ const LabelRowContainer = styled.div`
   align-items: flex-start;
   justify-content: flex-start;
 
-  p{
-margin: 0;
-  
+  p {
+    margin: 0;
   }
 `;
 
@@ -177,7 +171,7 @@ const sanitizeURL = (url: string): boolean => {
   try {
     const urlObject = new URL(url);
     return dangerousSites.every(
-      (site: string) => !urlObject.hostname.includes(site)
+      (site: string) => !urlObject.hostname.includes(site),
     );
   } catch (error) {
     if (isDevEnvironment()) console.warn(error);
@@ -192,7 +186,7 @@ const checkSourceURL = (url: string, whitelist: string[]): boolean => {
     const urlObject = new URL(url);
     return whitelist.some(
       (site) =>
-        urlObject.hostname === site || urlObject.hostname.endsWith(`.${site}`)
+        urlObject.hostname === site || urlObject.hostname.endsWith(`.${site}`),
     );
   } catch (error) {
     if (isDevEnvironment()) console.warn(error);
@@ -204,7 +198,6 @@ const validateURL = (url: string): boolean => {
   const urlPattern = /^(https?:\/\/[^\s$.?#].[^\s]*)$/i;
   return urlPattern.test(url) && sanitizeURL(url);
 };
-
 
 // Type definitions for props
 interface CustomInputFieldProps {
@@ -254,7 +247,6 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
   importProp,
   helper,
 }) => {
-
   const tooltipId = useId();
 
   const [inputValue, setInputValue] = useState<string>(currentValue);
@@ -448,7 +440,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
       if (value === undefined) {
         setHasError(true);
         setErrorMessage(
-          `Accessor "${importProp.jsonAccessor}" not found in JSON.`
+          `Accessor "${importProp.jsonAccessor}" not found in JSON.`,
         );
         return;
       }
@@ -522,7 +514,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     const pushIcon = (
       tooltip: string,
       icon: JSX.Element,
-      onClick: () => void
+      onClick: () => void,
     ) =>
       icons.push(
         <ImportButton
@@ -535,7 +527,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
           data-tooltip-content={tooltip}
         >
           {icon}
-        </ImportButton>
+        </ImportButton>,
       );
 
     switch (importProp.type) {
@@ -543,7 +535,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
         pushIcon(
           "Import a JSON file",
           <FileJsonIcon width={16} />,
-          handleJsonImport
+          handleJsonImport,
         );
         break;
 
@@ -551,7 +543,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
         pushIcon(
           "Import a text file",
           <TextAaIcon width={16} />,
-          handleTextImport
+          handleTextImport,
         );
         break;
 
@@ -559,7 +551,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
         pushIcon(
           "Paste text from clipboard",
           <ClipboardIcon width={16} />,
-          handleClipboardImport
+          handleClipboardImport,
         );
         break;
 
@@ -567,17 +559,17 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
         pushIcon(
           "Import a JSON file",
           <FileJsonIcon width={16} />,
-          handleJsonImport
+          handleJsonImport,
         );
         pushIcon(
           "Import a text file",
           <TextAaIcon width={16} />,
-          handleTextImport
+          handleTextImport,
         );
         pushIcon(
           "Paste text from clipboard",
           <ClipboardIcon width={16} />,
-          handleClipboardImport
+          handleClipboardImport,
         );
         break;
     }
@@ -660,7 +652,7 @@ export default CustomInputField;
  */
 function autocapitalize(
   text: string,
-  mode: "word" | "character" | "sentence" | "first" = "first"
+  mode: "word" | "character" | "sentence" | "first" = "first",
 ): string {
   if (!text) return "";
 

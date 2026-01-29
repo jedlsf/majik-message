@@ -24,6 +24,7 @@ export class MajikMessageChat {
   private expires_at: string;
   private read_by: string[];
   private conversation_id: string;
+  private permanent: boolean;
 
   // Maximum allowed length for the compressed message string
   private static readonly MAX_MESSAGE_LENGTH = 10000;
@@ -38,6 +39,7 @@ export class MajikMessageChat {
     expires_at: string,
     read_by: string[] = [],
     conversation_id?: string,
+    permanent: boolean = false,
   ) {
     this.validateID(id);
     this.validateAccount(account);
@@ -56,6 +58,8 @@ export class MajikMessageChat {
     this.timestamp = timestamp;
     this.expires_at = expires_at;
     this.read_by = [...read_by]; // Clone to prevent external mutation
+
+    this.permanent = permanent;
 
     this.conversation_id = conversation_id || this.generateConversationID();
   }
@@ -166,6 +170,7 @@ export class MajikMessageChat {
     message: string,
     recipients: string[],
     expiresInMs: number = 24 * 60 * 60 * 1000,
+    permanent: boolean = false,
   ): Promise<MajikMessageChat> {
     if (!account) {
       throw new Error("Invalid sender account: must be provided");
@@ -228,6 +233,8 @@ export class MajikMessageChat {
       now.toISOString(),
       expiresAt.toISOString(),
       [],
+      undefined,
+      permanent,
     );
   }
 
@@ -304,6 +311,10 @@ export class MajikMessageChat {
   // ============= EXPIRATION METHODS =============
 
   isExpired(): boolean {
+    if (this.permanent) {
+      return false;
+    }
+
     const now = new Date();
     const expiresAt = new Date(this.expires_at);
     return now >= expiresAt;
@@ -415,7 +426,11 @@ export class MajikMessageChat {
   // ============= READER MANAGEMENT =============
 
   markAsRead(userPublicKey: MajikMessagePublicKey): boolean {
-    if (!userPublicKey || typeof userPublicKey !== "string" || userPublicKey.trim() === "") {
+    if (
+      !userPublicKey ||
+      typeof userPublicKey !== "string" ||
+      userPublicKey.trim() === ""
+    ) {
       throw new Error("Invalid userPublicKey: must be a non-empty string");
     }
 
@@ -483,6 +498,10 @@ export class MajikMessageChat {
     );
   }
 
+  setTimestamp(date: Date = new Date()): void {
+    this.timestamp = date.toISOString();
+  }
+
   // ============= SERIALIZATION =============
 
   toJSON(): MajikMessageChatJSON {
@@ -496,6 +515,7 @@ export class MajikMessageChat {
       timestamp: this.timestamp,
       expires_at: this.expires_at,
       read_by: [...this.read_by],
+      permanent: this.permanent,
     };
   }
 
@@ -517,6 +537,7 @@ export class MajikMessageChat {
       rawParse.expires_at,
       rawParse.read_by || [],
       rawParse?.conversation_id,
+      rawParse?.permanent,
     );
   }
 

@@ -5,6 +5,7 @@ import {
   utf8ToBase64,
   concatUint8Arrays,
   arrayToBase64,
+  autogenerateID,
 } from "../utils/utilities";
 import { KEY_ALGO, MAJIK_SALT } from "./constants";
 import { EncryptionEngine } from "./encryption-engine";
@@ -67,7 +68,8 @@ export class KeyStoreError extends Error {
  * ⚠️ Background-only. Never expose private keys to content scripts.
  */
 export class KeyStore {
-  private static DB_NAME = "MajikMessageKeyStore";
+  private static deviceID: string = "default";
+
   private static STORE_NAME = "identities";
   private static DB_VERSION = 1;
 
@@ -79,29 +81,20 @@ export class KeyStore {
   static onUnlockRequested?: (id: string) => string | Promise<string>;
 
   /* ================================
-   * Chrome Storage Helpers
-   * ================================ */
-
-  private static async computeChecksum(
-    identities: SerializedIdentity[]
-  ): Promise<string> {
-    const json = JSON.stringify(identities);
-    const hash = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(json)
-    );
-    return arrayBufferToBase64(hash);
-  }
-
-  /* ================================
    * IndexedDB Helpers
    * ================================ */
+
+  static init(deviceID: string) {
+    this.deviceID = deviceID;
+  }
 
   private static async getDB(): Promise<IDBDatabase> {
     if (this.dbPromise) return this.dbPromise;
 
+    const dbName = this.deviceID;
+
     this.dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+      const request = indexedDB.open(dbName, this.DB_VERSION);
 
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -119,7 +112,7 @@ export class KeyStore {
   }
 
   private static async putSerializedIdentity(
-    identity: SerializedIdentity
+    identity: SerializedIdentity,
   ): Promise<void> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
@@ -134,7 +127,7 @@ export class KeyStore {
   }
 
   private static async getSerializedIdentity(
-    id: string
+    id: string,
   ): Promise<SerializedIdentity | null> {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
@@ -158,7 +151,7 @@ export class KeyStore {
    */
   static async isPassphraseValid(
     id: string,
-    passphrase: string
+    passphrase: string,
   ): Promise<boolean> {
     if (!passphrase) return false;
 
@@ -185,7 +178,7 @@ export class KeyStore {
   static async updatePassphrase(
     id: string,
     currentPassphrase: string,
-    newPassphrase: string
+    newPassphrase: string,
   ): Promise<void> {
     if (!newPassphrase || typeof newPassphrase !== "string") {
       throw new KeyStoreError("New passphrase must be a non-empty string");
@@ -211,7 +204,7 @@ export class KeyStore {
     const privateKeyBuffer = await this.decryptPrivateKey(
       encrypted,
       currentPassphrase,
-      salt
+      salt,
     );
 
     // 2. Re-encrypt with new passphrase + new salt
@@ -219,7 +212,7 @@ export class KeyStore {
     const newEncryptedPrivateKey = await this.encryptPrivateKey(
       privateKeyBuffer,
       newPassphrase,
-      newSalt
+      newSalt,
     );
 
     // 3. Persist updated identity
@@ -268,14 +261,14 @@ export class KeyStore {
       try {
         exportedPrivateKey = await crypto.subtle.exportKey(
           "raw",
-          identity.privateKey as CryptoKey
+          identity.privateKey as CryptoKey,
         );
       } catch (e) {
         const anyPriv: any = identity.privateKey as any;
         if (anyPriv && anyPriv.raw instanceof Uint8Array) {
           exportedPrivateKey = anyPriv.raw.buffer.slice(
             anyPriv.raw.byteOffset,
-            anyPriv.raw.byteOffset + anyPriv.raw.byteLength
+            anyPriv.raw.byteOffset + anyPriv.raw.byteLength,
           );
         } else {
           throw e;
@@ -285,7 +278,7 @@ export class KeyStore {
       const encryptedPrivateKey = await this.encryptPrivateKey(
         exportedPrivateKey,
         passphrase,
-        salt
+        salt,
       );
 
       const serialized: SerializedIdentity = {
@@ -322,7 +315,7 @@ export class KeyStore {
    */
   static async createIdentityFromMnemonic(
     mnemonic: string,
-    passphrase: string
+    passphrase: string,
   ): Promise<KeyStoreIdentity> {
     if (!mnemonic || typeof mnemonic !== "string") {
       throw new KeyStoreError("Mnemonic must be a non-empty string");
@@ -333,23 +326,22 @@ export class KeyStore {
     }
 
     try {
-      const identity = await EncryptionEngine.deriveIdentityFromMnemonic(
-        mnemonic
-      );
+      const identity =
+        await EncryptionEngine.deriveIdentityFromMnemonic(mnemonic);
       const id = identity.fingerprint; // stable id
 
       let exportedPrivate: ArrayBuffer;
       try {
         exportedPrivate = await crypto.subtle.exportKey(
           "raw",
-          identity.privateKey as CryptoKey
+          identity.privateKey as CryptoKey,
         );
       } catch (e) {
         const anyPriv: any = identity.privateKey as any;
         if (anyPriv && anyPriv.raw instanceof Uint8Array) {
           exportedPrivate = anyPriv.raw.buffer.slice(
             anyPriv.raw.byteOffset,
-            anyPriv.raw.byteOffset + anyPriv.raw.byteLength
+            anyPriv.raw.byteOffset + anyPriv.raw.byteLength,
           );
         } else {
           throw e;
@@ -359,7 +351,7 @@ export class KeyStore {
       const encryptedPrivateKey = await this.encryptPrivateKey(
         exportedPrivate,
         passphrase,
-        salt
+        salt,
       );
 
       const serialized: SerializedIdentity = {
@@ -394,7 +386,7 @@ export class KeyStore {
    */
   static async unlockIdentity(
     id: string,
-    passphrase: string
+    passphrase: string,
   ): Promise<KeyStoreIdentity> {
     const serialized = await this.getSerializedIdentity(id);
     if (!serialized) throw new KeyStoreError("Identity not found");
@@ -411,7 +403,7 @@ export class KeyStore {
     const privateKeyBuffer = await this.decryptPrivateKey(
       encrypted,
       passphrase,
-      salt
+      salt,
     );
 
     let privateKey: CryptoKey | any;
@@ -421,7 +413,7 @@ export class KeyStore {
         privateKeyBuffer,
         KEY_ALGO,
         true,
-        ["deriveKey", "deriveBits"]
+        ["deriveKey", "deriveBits"],
       );
     } catch (e) {
       // WebCrypto doesn't support importing X25519; keep raw wrapper
@@ -453,7 +445,7 @@ export class KeyStore {
    * Throws if the identity is not found or not unlocked.
    */
   static async getPrivateKey(
-    idOrFingerprint: string
+    idOrFingerprint: string,
   ): Promise<CryptoKey | { raw: Uint8Array }> {
     // First, check in-memory unlocked identities by id
     const byId = this.unlockedIdentities.get(idOrFingerprint);
@@ -467,7 +459,7 @@ export class KeyStore {
 
     // Not unlocked in memory -- instruct caller to unlock first
     throw new KeyStoreError(
-      `Identity with ID/fingerprint "${idOrFingerprint}" must be unlocked first via unlockIdentity()`
+      `Identity with ID/fingerprint "${idOrFingerprint}" must be unlocked first via unlockIdentity()`,
     );
   }
 
@@ -475,7 +467,7 @@ export class KeyStore {
    * Locks a stored identity (removes private key from memory).
    */
   static async lockIdentity(
-    identity: KeyStoreIdentity
+    identity: KeyStoreIdentity,
   ): Promise<KeyStoreIdentity> {
     // Remove from in-memory cache
     if (identity && identity.id) this.unlockedIdentities.delete(identity.id);
@@ -486,7 +478,7 @@ export class KeyStore {
    * Gets a stored identity's public key.
    */
   static async getPublicKey(
-    id: string
+    id: string,
   ): Promise<CryptoKey | { raw: Uint8Array }> {
     const serialized = await this.getSerializedIdentity(id);
     if (!serialized) throw new KeyStoreError("Identity not found");
@@ -511,7 +503,7 @@ export class KeyStore {
   private static async encryptPrivateKey(
     buffer: ArrayBuffer,
     passphrase: string,
-    salt: Uint8Array
+    salt: Uint8Array,
   ): Promise<ArrayBuffer> {
     if (!passphrase?.trim()) {
       throw new Error("Passphrase cannot be empty or undefined");
@@ -526,7 +518,7 @@ export class KeyStore {
   private static async decryptPrivateKey(
     buffer: ArrayBuffer,
     passphrase: string,
-    salt: Uint8Array
+    salt: Uint8Array,
   ): Promise<ArrayBuffer> {
     const keyBytes = providerDeriveKeyFromPassphrase(passphrase, salt);
 
@@ -541,7 +533,7 @@ export class KeyStore {
   }
 
   private static async exportPublicKeyBase64(
-    key: CryptoKey | { raw: Uint8Array }
+    key: CryptoKey | { raw: Uint8Array },
   ): Promise<string> {
     const anyKey: any = key as any;
     if (anyKey && anyKey.raw instanceof Uint8Array) {
@@ -552,7 +544,7 @@ export class KeyStore {
   }
 
   private static async importPublicKeyBase64(
-    base64: string
+    base64: string,
   ): Promise<CryptoKey | { raw: Uint8Array }> {
     const raw = base64ToArrayBuffer(base64);
     try {
@@ -661,12 +653,12 @@ export class KeyStore {
    */
   static async exportIdentityMnemonicBackup(
     id: string,
-    mnemonic: string
+    mnemonic: string,
   ): Promise<string> {
     const unlocked = this.unlockedIdentities.get(id);
     if (!unlocked || !unlocked.privateKey) {
       throw new KeyStoreError(
-        "Identity must be unlocked before exporting mnemonic backup"
+        "Identity must be unlocked before exporting mnemonic backup",
       );
     }
 
@@ -677,11 +669,11 @@ export class KeyStore {
     try {
       privRawBuf = await crypto.subtle.exportKey(
         "raw",
-        unlocked.privateKey as CryptoKey
+        unlocked.privateKey as CryptoKey,
       );
       pubRawBuf = await crypto.subtle.exportKey(
         "raw",
-        unlocked.publicKey as CryptoKey
+        unlocked.publicKey as CryptoKey,
       );
     } catch (e) {
       const anyPriv: any = unlocked.privateKey as any;
@@ -689,7 +681,7 @@ export class KeyStore {
       if (anyPriv && anyPriv.raw instanceof Uint8Array) {
         privRawBuf = anyPriv.raw.buffer.slice(
           anyPriv.raw.byteOffset,
-          anyPriv.raw.byteOffset + anyPriv.raw.byteLength
+          anyPriv.raw.byteOffset + anyPriv.raw.byteLength,
         );
       } else {
         throw e;
@@ -697,7 +689,7 @@ export class KeyStore {
       if (anyPub && anyPub.raw instanceof Uint8Array) {
         pubRawBuf = anyPub.raw.buffer.slice(
           anyPub.raw.byteOffset,
-          anyPub.raw.byteOffset + anyPub.raw.byteLength
+          anyPub.raw.byteOffset + anyPub.raw.byteLength,
         );
       } else {
         throw e;
@@ -727,7 +719,7 @@ export class KeyStore {
   static async importIdentityFromMnemonicBackup(
     backupBase64: string,
     mnemonic: string,
-    passphrase: string
+    passphrase: string,
   ): Promise<KeyStoreIdentity> {
     try {
       if (!passphrase?.trim()) {
@@ -759,7 +751,7 @@ export class KeyStore {
       const raw = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv },
         fullKey,
-        ciphertext
+        ciphertext,
       );
 
       let privateKey: CryptoKey | { raw: Uint8Array };
@@ -785,7 +777,7 @@ export class KeyStore {
       const encryptedPrivateKey = await this.encryptPrivateKey(
         exportedPrivateKey,
         passphrase,
-        salt
+        salt,
       );
 
       const id = obj.id || crypto.randomUUID();
@@ -818,7 +810,7 @@ export class KeyStore {
   }
 
   private static async deriveKeyFromMnemonic(
-    mnemonic: string
+    mnemonic: string,
   ): Promise<CryptoKey> {
     const salt = new TextEncoder().encode("MajikMessageMnemonicSalt");
     const keyMaterial = await crypto.subtle.importKey(
@@ -826,7 +818,7 @@ export class KeyStore {
       new TextEncoder().encode(mnemonic),
       { name: "PBKDF2" },
       false,
-      ["deriveKey"]
+      ["deriveKey"],
     );
 
     return crypto.subtle.deriveKey(
@@ -839,7 +831,7 @@ export class KeyStore {
       keyMaterial,
       { name: "AES-GCM", length: 256 },
       false,
-      ["encrypt", "decrypt"]
+      ["encrypt", "decrypt"],
     );
   }
 }

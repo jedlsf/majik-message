@@ -1,12 +1,10 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 
 type YYYYMM = `${number}${number}${number}${number}-${number}${number}`;
 
 const Container = styled.div`
-   width: 100%;
+  width: 100%;
   height: 100%;
   display: flex;
   align-items: flex-start;

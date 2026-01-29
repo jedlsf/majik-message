@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 
@@ -113,21 +111,21 @@ const DatePicker: React.FC<DatePickerProps> = ({
       const pickedDate = new Date(
         parseInt(selectedYear),
         parseInt(selectedMonth) - 1,
-        parseInt(selectedDay)
+        parseInt(selectedDay),
       );
 
       if (minDate && pickedDate < new Date(minDate)) {
         setError(
           `Date cannot be earlier than ${new Date(
-            minDate
-          ).toLocaleDateString()}`
+            minDate,
+          ).toLocaleDateString()}`,
         );
         return;
       }
 
       if (maxDate && pickedDate > new Date(maxDate)) {
         setError(
-          `Date cannot be later than ${new Date(maxDate).toLocaleDateString()}`
+          `Date cannot be later than ${new Date(maxDate).toLocaleDateString()}`,
         );
         return;
       }
@@ -188,14 +186,14 @@ const DatePicker: React.FC<DatePickerProps> = ({
       const daysInMonth = new Date(
         parseInt(selectedYear),
         parseInt(selectedMonth),
-        0
+        0,
       ).getDate();
 
       for (let i = 1; i <= daysInMonth; i++) {
         const potentialDate = new Date(
           parseInt(selectedYear),
           parseInt(selectedMonth) - 1,
-          i
+          i,
         );
 
         if (

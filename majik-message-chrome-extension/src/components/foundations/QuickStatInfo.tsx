@@ -1,10 +1,7 @@
-'use client';
-
-import React from 'react';
-import styled from 'styled-components';
+import React from "react";
+import styled from "styled-components";
 
 // Define the theme structure for type safety
-
 
 const RootContainer = styled.div`
   display: flex;
@@ -24,7 +21,6 @@ const RootContainer = styled.div`
   transition: all 0.3s ease;
 
   &:hover {
-
     .valueinfo {
       color: ${({ theme }) => theme.colors.primary};
     }
@@ -53,10 +49,13 @@ interface QuickStatInfoProps {
   value?: number | string;
 }
 
-const QuickStatInfo: React.FC<QuickStatInfoProps> = ({ label = "Label", value = 0 }) => {
+const QuickStatInfo: React.FC<QuickStatInfoProps> = ({
+  label = "Label",
+  value = 0,
+}) => {
   return (
     <RootContainer>
-      <ValueContainer className='valueinfo'>{value}</ValueContainer>
+      <ValueContainer className="valueinfo">{value}</ValueContainer>
       <LabelContainer>{label}</LabelContainer>
     </RootContainer>
   );

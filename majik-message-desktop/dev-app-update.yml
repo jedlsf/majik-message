@@ -1,0 +1,3 @@
+provider: generic
+url: https://majikah.solutions/majik-message/updates
+updaterCacheDirName: majik-message-desktop-updater

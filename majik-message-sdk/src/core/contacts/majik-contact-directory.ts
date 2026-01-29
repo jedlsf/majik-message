@@ -142,13 +142,19 @@ export class MajikContactDirectory {
     return this.fingerprintMap.has(fingerprint);
   }
 
-  listContacts(sortedByLabel = false): MajikContact[] {
-    const contacts = [...this.contacts.values()];
+  listContacts(sortedByLabel = false, majikahOnly = false): MajikContact[] {
+    let contacts = [...this.contacts.values()];
+
+    if (majikahOnly) {
+      contacts = contacts.filter((c) => c.isMajikahRegistered());
+    }
+
     if (sortedByLabel) {
       contacts.sort((a, b) =>
         (a.meta.label || "").localeCompare(b.meta.label || ""),
       );
     }
+
     return contacts;
   }
 
@@ -178,6 +184,27 @@ export class MajikContactDirectory {
     this.contacts.clear();
     this.fingerprintMap.clear();
     return this;
+  }
+
+  setMajikahStatus(id: string, status: boolean): MajikContact {
+    const contact = this.getContact(id);
+    if (!contact) throw new MajikContactDirectoryError("Contact not found");
+
+    contact.setMajikahStatus(status);
+
+    return contact;
+  }
+
+  isMajikahIdentityChecked(id: string): boolean {
+    const contact = this.getContact(id);
+    if (!contact) throw new MajikContactDirectoryError("Contact not found");
+    return contact.isMajikahIdentityChecked();
+  }
+
+  isMajikahRegistered(id: string): boolean {
+    const contact = this.getContact(id);
+    if (!contact) throw new MajikContactDirectoryError("Contact not found");
+    return contact.isMajikahRegistered();
   }
 
   /**

@@ -1,11 +1,9 @@
-'use client';
-
-import React, { ReactNode } from 'react';
-import styled from 'styled-components';
+import React, { ReactNode } from "react";
+import styled from "styled-components";
 
 import { DotLoader } from "react-spinners";
-import { ButtonPrimaryConfirm } from '../../globals/buttons';
-import theme from '../../globals/theme';
+import { ButtonPrimaryConfirm } from "../../globals/buttons";
+import theme from "../../globals/theme";
 
 // Styled component for the frosted glass effect and full space usage
 const PlaceholderContainer = styled.div`
@@ -32,11 +30,11 @@ const StyledText = styled.div`
   max-width: 450px; /* Adjust width as needed */
 
   /* Dynamic font size */
-  font-size: clamp(10px, 1vw, 14px);  /* Min: 12px, Preferred: 2vw, Max: 24px */
+  font-size: clamp(10px, 1vw, 14px); /* Min: 12px, Preferred: 2vw, Max: 24px */
 
-     @media (max-width: 768px) {
-        max-width: 250px; /* Adjust width as needed */
-    }
+  @media (max-width: 768px) {
+    max-width: 250px; /* Adjust width as needed */
+  }
 `;
 
 // Type definition for the props
@@ -48,39 +46,33 @@ interface DynamicPlaceholderProps {
 }
 
 // Stateless functional component
-const DynamicPlaceholder: React.FC<DynamicPlaceholderProps> = ({ children, loading = false, onActionClick, actionButtonText }) => {
+const DynamicPlaceholder: React.FC<DynamicPlaceholderProps> = ({
+  children,
+  loading = false,
+  onActionClick,
+  actionButtonText,
+}) => {
   return (
     <PlaceholderContainer>
-      {
-        loading
-          ?
-          <DotLoader
-            color={theme.colors.primary}
-            loading={true}
-            size={70}
-            aria-label="Loading Spinner"
-            data-testid="loader"
-            speedMultiplier={1.3}
-
-          />
-
-          :
-
-          null
-
-      }
-      <StyledText>
-        {children}
-      </StyledText>
-      {
-        !!onActionClick && !!actionButtonText && actionButtonText.trim() !== "" &&
-        < ButtonPrimaryConfirm
-          onClick={onActionClick}
-        >
-          {actionButtonText}
-        </ButtonPrimaryConfirm>
-      }
-    </PlaceholderContainer >
+      {loading ? (
+        <DotLoader
+          color={theme.colors.primary}
+          loading={true}
+          size={70}
+          aria-label="Loading Spinner"
+          data-testid="loader"
+          speedMultiplier={1.3}
+        />
+      ) : null}
+      <StyledText>{children}</StyledText>
+      {!!onActionClick &&
+        !!actionButtonText &&
+        actionButtonText.trim() !== "" && (
+          <ButtonPrimaryConfirm onClick={onActionClick}>
+            {actionButtonText}
+          </ButtonPrimaryConfirm>
+        )}
+    </PlaceholderContainer>
   );
 };
 

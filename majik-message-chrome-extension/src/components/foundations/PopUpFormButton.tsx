@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import styled from "styled-components";
 import * as AlertDialog from "@radix-ui/react-alert-dialog";

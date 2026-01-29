@@ -1,5 +1,6 @@
 // lib/indexedDB.ts
 import { openDB, type IDBPDatabase } from "idb";
+import { autogenerateID } from "./utilities";
 
 export interface MajikIDBSaveData {
   id: string;
@@ -13,9 +14,10 @@ interface MajikAutosaveSchema {
 
 let dbPromise: Promise<IDBPDatabase<MajikAutosaveSchema>>;
 
-export function initDB() {
+export function initDB(name: string = "default") {
   if (!dbPromise) {
-    dbPromise = openDB("MajikAutosaveDB", 1, {
+    const dbName = `MajikAutosaveDB_${name}`;
+    dbPromise = openDB(dbName, 1, {
       upgrade(db) {
         if (!db.objectStoreNames.contains("majikdata")) {
           db.createObjectStore("majikdata", { keyPath: "id" });
@@ -26,16 +28,21 @@ export function initDB() {
   return dbPromise;
 }
 
-export async function idbSaveBlob(id: string, data: Blob) {
-  const db = await initDB();
+export async function idbSaveBlob(
+  id: string,
+  data: Blob,
+  name: string = "default",
+) {
+  const db = await initDB(name);
   await db.put("majikdata", { id, data, savedAt: Date.now() });
 }
 
 export async function idbLoadBlob(
-  id: string
+  id: string,
+  name: string = "default",
 ): Promise<MajikIDBSaveData | undefined> {
   try {
-    const db = await initDB();
+    const db = await initDB(name);
     return await db.get("majikdata", id);
   } catch (err) {
     console.error(`Failed to load blob with id "${id}":`, err);
@@ -43,12 +50,20 @@ export async function idbLoadBlob(
   }
 }
 
-export async function deleteBlob(id: string) {
-  const db = await initDB();
-  return db.delete("majikdata", id);
+export async function deleteBlob(
+  id: string,
+  name: string = "default",
+): Promise<void> {
+  try {
+    const db = await initDB(name);
+    return db.delete("majikdata", id);
+  } catch (err) {
+    console.error(`Failed to delete blob with id "${id}":`, err);
+    return undefined;
+  }
 }
 
-export async function clearAllBlobs() {
-  const db = await initDB();
+export async function clearAllBlobs(name: string = "default"): Promise<void> {
+  const db = await initDB(name);
   return db.clear("majikdata");
 }

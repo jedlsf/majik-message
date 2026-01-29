@@ -1,6 +1,4 @@
 // DynamicColoredValue.tsx
-"use client";
-
 
 import React, { ReactNode, useMemo } from "react";
 import styled, { useTheme } from "styled-components";
@@ -25,7 +23,6 @@ const ValueText = styled.span<{
   white-space: nowrap;
   width: 100%;
 `;
-
 
 interface ColorMapItem {
   color: string; // hex color
@@ -63,7 +60,7 @@ export const DynamicColoredValue: React.FC<DynamicColoredValueProps> = ({
         if (min !== undefined && max !== undefined && min > max) {
           console.warn(
             `[DynamicColoredValue] ColorMapItem at index ${i} has min > max:`,
-            colorsMap[i]
+            colorsMap[i],
           );
         }
 
@@ -77,7 +74,7 @@ export const DynamicColoredValue: React.FC<DynamicColoredValueProps> = ({
             console.warn(
               `[DynamicColoredValue] Overlapping ColorMapItems at index ${i} and ${j}:`,
               colorsMap[i],
-              other
+              other,
             );
           }
         }
@@ -94,7 +91,7 @@ export const DynamicColoredValue: React.FC<DynamicColoredValueProps> = ({
       const matching = colorsMap.find(
         (c) =>
           (c.min === undefined || value >= c.min) &&
-          (c.max === undefined || value <= c.max)
+          (c.max === undefined || value <= c.max),
       );
       if (matching) return matching.color;
     }

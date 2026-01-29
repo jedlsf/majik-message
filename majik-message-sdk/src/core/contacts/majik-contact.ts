@@ -24,6 +24,7 @@ export interface MajikContactData {
   publicKey: CryptoKey | { raw: Uint8Array };
   fingerprint: string;
   meta?: MajikContactMeta;
+  majikah_registered?: boolean;
 }
 
 export interface MajikContactCard {
@@ -55,6 +56,7 @@ export class MajikContact {
   public readonly publicKey: CryptoKey | { raw: Uint8Array };
   public readonly fingerprint: string;
   public meta: MajikContactMeta;
+  private majikah_registered?: boolean;
 
   constructor(data: MajikContactData) {
     this.assertId(data.id);
@@ -155,6 +157,23 @@ export class MajikContact {
     return this;
   }
 
+  isMajikahIdentityChecked(): boolean {
+    return this.majikah_registered !== undefined;
+  }
+
+  isMajikahRegistered(): boolean {
+    return this.majikah_registered || false;
+  }
+
+  setMajikahStatus(status: boolean): this {
+    this.majikah_registered = status;
+    return this;
+  }
+
+  async getDisplayName(): Promise<string> {
+    return this.meta.label || (await this.getPublicKeyBase64());
+  }
+
   /**
    * Support both CryptoKey and raw-key wrappers (fallbacks when WebCrypto X25519 unsupported)
    */
@@ -182,6 +201,7 @@ export class MajikContact {
       fingerprint: this.fingerprint,
       meta: { ...this.meta },
       publicKeyBase64: await this.getPublicKeyBase64(),
+      majikah_registered: this.majikah_registered,
     };
   }
 
@@ -199,6 +219,7 @@ export class MajikContact {
         fingerprint: serialized.fingerprint,
         meta: serialized.meta,
         publicKey: { raw: publicKeyRaw },
+        majikah_registered: serialized.majikah_registered,
       });
     } catch (err) {
       throw new MajikContactError("Failed to deserialize MajikContact", err);
@@ -226,6 +247,7 @@ export class MajikContact {
           updatedAt: identityJSON.timestamp,
           blocked: identityJSON.restricted,
         },
+        majikah_registered: true,
       };
 
       return new MajikContact(contactData);

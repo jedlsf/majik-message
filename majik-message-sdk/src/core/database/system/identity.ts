@@ -1,5 +1,5 @@
-import { MajikUser } from "./majik-user/majik-user";
-import { autogenerateID } from "./utils";
+import { MajikUser } from '@thezelijah/majik-user'
+
 import { SerializedMajikContact } from "../../contacts/majik-contact";
 import { hash } from "@stablelib/sha256";
 import { arrayToBase64 } from "../../utils/utilities";

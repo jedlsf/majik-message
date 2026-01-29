@@ -14,7 +14,7 @@ export interface MajikMessageChatJSON {
   timestamp: string;
   expires_at: string;
   read_by: string[];
+  permanent: boolean;
 }
 
 export type RedisKey = string;
-

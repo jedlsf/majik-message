@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import styled from "styled-components";
 import { ButtonPrimaryConfirm } from "../../globals/buttons";

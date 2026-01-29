@@ -1,11 +1,13 @@
-'use client';
+import React, { useState } from "react";
+import styled, { keyframes, css } from "styled-components";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  ClipboardIcon,
+} from "@heroicons/react/24/solid";
 
-import React, { useState } from 'react';
-import styled, { keyframes, css } from 'styled-components';
-import { EyeIcon, EyeSlashIcon, ClipboardIcon } from '@heroicons/react/24/solid';
-
-import { toast } from 'sonner';
-import HelperHover from './HelperHover';
+import { toast } from "sonner";
+import HelperHover from "./HelperHover";
 
 // Define fade-in keyframes for animation
 const fadeIn = keyframes`
@@ -71,15 +73,21 @@ const TextKeyRow = styled.div`
 const TextKeyContainer = styled.div<{ $dark?: boolean }>`
   font-size: ${({ theme }) => theme.typography.sizes.body};
   font-weight: ${({ theme }) => theme.typography.weights.body};
-    color: ${({ theme, $dark }) =>
+  color: ${({ theme, $dark }) =>
     $dark ? theme.colors.primaryBackground : theme.colors.textSecondary};
   user-select: none;
-    text-align: left;
+  text-align: left;
 `;
 
-const TextValueContainer = styled(TextKeyContainer) <{ $highlight?: boolean, $fcolor?: string | null, $extend?: boolean, $dark?: boolean }>`
-  font-size: ${({ theme, $highlight }) => $highlight ? theme.typography.sizes.subject : theme.typography.sizes.body}; 
-   color: ${({ theme, $highlight, $fcolor, $dark }) =>
+const TextValueContainer = styled(TextKeyContainer)<{
+  $highlight?: boolean;
+  $fcolor?: string | null;
+  $extend?: boolean;
+  $dark?: boolean;
+}>`
+  font-size: ${({ theme, $highlight }) =>
+    $highlight ? theme.typography.sizes.subject : theme.typography.sizes.body};
+  color: ${({ theme, $highlight, $fcolor, $dark }) =>
     $highlight
       ? $fcolor
         ? $fcolor
@@ -89,12 +97,14 @@ const TextValueContainer = styled(TextKeyContainer) <{ $highlight?: boolean, $fc
         : $dark
           ? theme.colors.primaryBackground
           : theme.colors.textSecondary};
-  font-weight: ${({ theme, $highlight }) => $highlight ? theme.typography.weights.subject : '550'};
+  font-weight: ${({ theme, $highlight }) =>
+    $highlight ? theme.typography.weights.subject : "550"};
   max-width: 230px;
   text-align: right;
- ${({ $extend }) => $extend
-    ? 'white-space: normal; overflow: visible; text-overflow: clip;'
-    : 'white-space: nowrap; overflow: hidden; text-overflow: ellipsis;'}
+  ${({ $extend }) =>
+    $extend
+      ? "white-space: normal; overflow: visible; text-overflow: clip;"
+      : "white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"}
 `;
 
 const IconContainer = styled.button`
@@ -109,7 +119,8 @@ const IconContainer = styled.button`
 
 // Styled component for the hint text
 const HintText = styled.div`
-  font-size: ${({ theme }) => theme.typography.sizes.hint}; // Placeholder for font size
+  font-size: ${({ theme }) =>
+    theme.typography.sizes.hint}; // Placeholder for font size
   color: ${({ theme }) => theme.colors.textSecondary}; // Placeholder for color
   animation: ${fadeIn} 0.3s ease-in-out;
   margin: 5px 15px;
@@ -141,7 +152,7 @@ const RowTextItem: React.FC<RowTextItemProps> = ({
   hint = null,
   colorValue = null,
   extend = false,
-  helper = null
+  helper = null,
 }) => {
   const [showValue, setShowValue] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -152,7 +163,7 @@ const RowTextItem: React.FC<RowTextItemProps> = ({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(textValue);
-    toast.message('Copied to clipboard', {
+    toast.message("Copied to clipboard", {
       description: textValue,
     });
   };
@@ -166,16 +177,10 @@ const RowTextItem: React.FC<RowTextItemProps> = ({
       <ContentContainer>
         <TextKeyRow>
           <TextKeyContainer $dark={darkMode}>{textKey}</TextKeyContainer>
-          {!!helper && helper.trim() !== ""
-            ?
-            <HelperHover>
-              {helper}
-            </HelperHover>
-            :
-            null
-          }
+          {!!helper && helper.trim() !== "" ? (
+            <HelperHover>{helper}</HelperHover>
+          ) : null}
         </TextKeyRow>
-
 
         <RowContainer>
           {copyable && (
@@ -183,8 +188,13 @@ const RowTextItem: React.FC<RowTextItemProps> = ({
               <ClipboardIcon />
             </IconContainer>
           )}
-          <TextValueContainer $highlight={highlight} $fcolor={colorValue} $extend={extend} $dark={darkMode}>
-            {sensitive && !showValue ? '••••••••' : textValue}
+          <TextValueContainer
+            $highlight={highlight}
+            $fcolor={colorValue}
+            $extend={extend}
+            $dark={darkMode}
+          >
+            {sensitive && !showValue ? "••••••••" : textValue}
           </TextValueContainer>
           {sensitive && (
             <IconContainer onClick={handleToggle}>
@@ -193,11 +203,7 @@ const RowTextItem: React.FC<RowTextItemProps> = ({
           )}
         </RowContainer>
       </ContentContainer>
-      {isHovered && hint && (
-        <HintText>
-          {hint}
-        </HintText>
-      )}
+      {isHovered && hint && <HintText>{hint}</HintText>}
     </Container>
   );
 };

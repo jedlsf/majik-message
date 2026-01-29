@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useEffect, useState } from "react";
 import styled, { css } from "styled-components";
 import { MajikContact } from "../../SDK/majik-message/core/contacts/majik-contact";

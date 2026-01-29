@@ -1,16 +1,10 @@
-'use client';
+import React, { useState } from "react";
+import styled from "styled-components";
 
-import React, { useState } from 'react';
-import styled from 'styled-components';
+import { TrashIcon } from "@heroicons/react/24/solid";
 
-import { TrashIcon } from '@heroicons/react/24/solid';
-
-
-import * as AlertDialog from '@radix-ui/react-alert-dialog';
-import { ButtonPrimaryConfirm } from '../../globals/buttons';
-
-
-
+import * as AlertDialog from "@radix-ui/react-alert-dialog";
+import { ButtonPrimaryConfirm } from "../../globals/buttons";
 
 interface DeleteButtonProps {
   onClick?: () => void;
@@ -31,7 +25,7 @@ const IconButton = styled.button`
 
   &:hover {
     color: ${({ theme }) => theme.colors.primaryBackground};
-      background-color: ${({ theme }) => theme.colors.primary};
+    background-color: ${({ theme }) => theme.colors.primary};
   }
 
   &:focus {
@@ -41,7 +35,7 @@ const IconButton = styled.button`
 
 // Styled overlay for the dialog
 const Overlay = styled(AlertDialog.Overlay)`
-  background: rgba(0, 0, 0, 0.5); 
+  background: rgba(0, 0, 0, 0.5);
   position: fixed;
   top: 0;
   left: 0;
@@ -57,7 +51,7 @@ const Overlay = styled(AlertDialog.Overlay)`
 // Styled dialog content
 const DialogContent = styled(AlertDialog.Content)`
   background: ${({ theme }) => theme.colors.primaryBackground};
-  backdrop-filter: blur(50px); 
+  backdrop-filter: blur(50px);
   border-radius: ${({ theme }) => theme.borders.radius.large};
   padding: 2.5em;
   width: 350px;
@@ -101,11 +95,15 @@ const StyledDeleteConfirmButton = styled(ButtonPrimaryConfirm)`
 
 const StyledCancelButton = styled(ButtonPrimaryConfirm)`
   background: ${({ theme }) => theme.colors.primaryBackground};
-      color: ${({ theme }) => theme.colors.textPrimary};
+  color: ${({ theme }) => theme.colors.textPrimary};
   width: 130px;
 `;
 
-const DeleteButton: React.FC<DeleteButtonProps> = ({ onClick, onCancel, title = "item" }) => {
+const DeleteButton: React.FC<DeleteButtonProps> = ({
+  onClick,
+  onCancel,
+  title = "item",
+}) => {
   const [open, setOpen] = useState<boolean>(false);
 
   const handleOnDelete = () => {
@@ -129,11 +127,22 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({ onClick, onCancel, title = 
             <DialogContent>
               <DialogTitle>Confirm Delete</DialogTitle>
               <DialogDescription>
-                Are you sure you want to delete this {title}? This action cannot be undone.
+                Are you sure you want to delete this {title}? This action cannot
+                be undone.
               </DialogDescription>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '25px' }}>
-                <StyledCancelButton onClick={handleOnCancel}>Cancel</StyledCancelButton>
-                <StyledDeleteConfirmButton onClick={handleOnDelete}>Delete</StyledDeleteConfirmButton>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "25px",
+                }}
+              >
+                <StyledCancelButton onClick={handleOnCancel}>
+                  Cancel
+                </StyledCancelButton>
+                <StyledDeleteConfirmButton onClick={handleOnDelete}>
+                  Delete
+                </StyledDeleteConfirmButton>
               </div>
             </DialogContent>
           </Overlay>
