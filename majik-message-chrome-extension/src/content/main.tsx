@@ -1,16 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./views/App.tsx";
-import { MessageEnvelope } from "../SDK/majik-message/core/messages/message-envelope.ts";
-import { MajikMessageWrapper } from "../sidepanel/MajikMessageWrapper.tsx";
 
-import {
-  MajikMessage,
-  MajikMessageJSON,
-} from "../SDK/majik-message/majik-message.ts";
+import { MajikMessageJSON, MessageEnvelope } from "@thezelijah/majik-message";
 import ReduxProvider from "../redux/ReduxProvider.tsx";
 import ThemeProviderWrapper from "../globals/ThemeProviderWrapper.tsx";
 import { base64EncodeUtf8 } from "../lib/majik-file-utils.ts";
+import { MajikMessageWrapper } from "../components/majik-context-wrapper/MajikMessageWrapper.tsx";
+import { MajikMessageDatabase } from "../components/majik-context-wrapper/majik-message-database.ts";
 
 console.log("[Majik Message] Content Script Initialized");
 
@@ -18,7 +15,7 @@ const container = document.createElement("div");
 container.id = "crxjs-app";
 document.body.appendChild(container);
 
-let majikInstance: MajikMessage | null = null;
+let majikInstance: MajikMessageDatabase | null = null;
 
 // main.tsx or content script
 async function getMajik() {
@@ -37,11 +34,11 @@ async function getMajik() {
     console.log("[Majik] Raw Response", response);
     if (response?.data) {
       const parsed = JSON.parse(response.data) as MajikMessageJSON;
-      majikInstance = await MajikMessage.fromJSON(parsed);
+      majikInstance = await MajikMessageDatabase.fromJSON(parsed);
 
       console.log(
         "[Majik] Reconstructed instance in content script",
-        majikInstance
+        majikInstance,
       );
     }
   }
@@ -50,14 +47,14 @@ async function getMajik() {
 
 async function requestDecryption(
   encryptedText: string,
-  inputPassPhrase?: string
+  inputPassPhrase?: string,
 ): Promise<string> {
   const promptPassphrase = !!inputPassPhrase?.trim()
     ? inputPassPhrase
     : window.prompt(
         "Please enter your passphrase to unlock this message.\n\n" +
           "Make sure it's the passphrase associated with your account.",
-        ""
+        "",
       );
 
   const response = await new Promise<any>((resolve, reject) => {
@@ -75,7 +72,7 @@ async function requestDecryption(
         } else {
           resolve(resp);
         }
-      }
+      },
     );
   });
 
@@ -197,7 +194,7 @@ async function handleDecryptEverything(inputPassPhrase?: string) {
           ? NodeFilter.FILTER_ACCEPT
           : NodeFilter.FILTER_REJECT;
       },
-    }
+    },
   );
 
   const textNodes: Text[] = [];
@@ -219,7 +216,7 @@ async function handleDecryptEverything(inputPassPhrase?: string) {
     window.prompt(
       "Please enter your passphrase to unlock messages.\n\n" +
         "Make sure it's the passphrase associated with your account.",
-      ""
+      "",
     );
   if (!passphrase?.trim()) return;
 
@@ -237,7 +234,7 @@ async function handleDecryptEverything(inputPassPhrase?: string) {
       } catch (err) {
         console.error("[Majik Debug] Failed to decrypt text node", err);
       }
-    })
+    }),
   );
 }
 
@@ -266,10 +263,9 @@ async function handleDecryptEverythingGmail(inputPassPhrase?: string) {
   }
 
   // Prompt passphrase once
-  const passphrase = inputPassPhrase || window.prompt(
-    "Please enter your passphrase to unlock messages.",
-    ""
-  );
+  const passphrase =
+    inputPassPhrase ||
+    window.prompt("Please enter your passphrase to unlock messages.", "");
   if (!passphrase?.trim()) return;
 
   await Promise.all(
@@ -283,7 +279,7 @@ async function handleDecryptEverythingGmail(inputPassPhrase?: string) {
       } catch (err) {
         console.error("[Majik Gmail] Failed to decrypt element:", el, err);
       }
-    })
+    }),
   );
 }
 
@@ -334,7 +330,7 @@ function replaceEditorSelection(el: HTMLElement, text: string) {
         data: text,
         bubbles: true,
         cancelable: true,
-      })
+      }),
     );
     return;
   } catch {}
@@ -389,7 +385,7 @@ createRoot(container).render(
         </MajikMessageWrapper>
       </ThemeProviderWrapper>
     </ReduxProvider>
-  </StrictMode>
+  </StrictMode>,
 );
 
 function isGmail(): boolean {

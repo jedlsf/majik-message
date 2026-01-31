@@ -1,9 +1,8 @@
 import React, {
   useState,
-  useEffect,
-  ChangeEvent,
-  KeyboardEvent,
-  JSX,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type JSX,
   useId,
 } from "react";
 import styled from "styled-components";
@@ -20,7 +19,7 @@ import { isDevEnvironment, isPasswordValidSafe } from "../../utils/utils";
 const InputWrapper = styled.div`
   display: flex;
   flex-direction: column;
-  width: inherit;
+  width: 100%;
 `;
 
 const LabelRowContainer = styled.div`
@@ -39,21 +38,17 @@ const LabelRowContainer = styled.div`
 const RequiredAsterisk = styled.p`
   font-size: 12px;
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.primary};
+  color: ${({ theme }) => theme.colors.error};
   text-align: left;
   user-select: none;
 `;
 
 const Label = styled.label<{ $ishelper: boolean }>`
-  margin-bottom: ${({ theme }) => theme.spacing.small};
-  font-size: ${({ theme, $ishelper }) =>
-    $ishelper ? theme.typography.sizes.helper : theme.typography.sizes.label};
-  font-weight: 700;
-  color: ${({ theme, $ishelper }) =>
-    $ishelper ? theme.colors.textSecondary : theme.colors.textPrimary};
-  text-align: left;
-  display: ${({ $ishelper }) => ($ishelper ? "none" : "block")};
-  user-select: none;
+  display: block;
+  font-size: ${({ theme }) => theme.typography.sizes.label};
+  font-weight: 500;
+  color: ${({ theme }) => theme.colors.textSecondary};
+  margin-bottom: 0.5rem;
 
   @media (max-width: 768px) {
     font-size: ${({ $ishelper }) => ($ishelper ? "16px" : "18px")};
@@ -61,32 +56,25 @@ const Label = styled.label<{ $ishelper: boolean }>`
 `;
 
 const InputField = styled.input<{ $haserror: boolean }>`
-  padding: 10px 15px;
-  background-color: transparent;
-  border: 1px solid transparent;
-    overflow-hidden;
-
-  font-size: ${({ theme }) => theme.typography.sizes.body};
-
-  border-bottom: 1px solid
-    ${({ $haserror, theme }) =>
-      $haserror ? theme.colors.error : theme.colors.secondaryBackground};
-
-  outline: none;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid ${({ theme }) => theme.colors.secondaryBackground};
+  border-radius: 8px;
+  font-size: 1rem;
   color: ${({ theme }) => theme.colors.textPrimary};
-  width: 90%;
-  flex-shrink: 1;
-  user-select: none;
+  background-color: ${({ theme }) => theme.colors.primaryBackground};
 
-  &::placeholder {
-    color: ${({ theme }) => theme.colors.textSecondary};
-    font-size: ${({ theme }) => theme.typography.sizes.helper};
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${({ theme }) => theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(234, 172, 102, 0.1);
   }
 
-
-
-  @media (max-width: 768px) {
-    font-size: 16px;
+  &::placeholder {
+    color: ${({ theme }) => theme.colors.textSecondary || "#9ca3af"};
+    opacity: 0.6;
   }
 `;
 
@@ -97,7 +85,7 @@ const HelperText = styled.p`
   text-align: right;
   align-self: flex-end;
   user-select: none;
-  max-width: 270px;
+
   width: 100%;
 `;
 
@@ -156,6 +144,7 @@ const HintText = styled.span`
   color: ${({ theme }) => theme.colors.textSecondary};
   text-align: right;
   user-select: none;
+  margin-top: ${({ theme }) => theme.spacing.medium};
 `;
 
 type PasswordRequirement =
@@ -224,6 +213,9 @@ interface CustomInputFieldProps {
     jsonAccessor?: string;
   };
   helper?: string;
+  autofocus?: boolean;
+  sensitive?: boolean;
+  placeholder?: string;
 }
 
 const CustomInputField: React.FC<CustomInputFieldProps> = ({
@@ -246,20 +238,17 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
   whitelist,
   importProp,
   helper,
+  autofocus = false,
+  sensitive = false,
+  placeholder,
 }) => {
   const tooltipId = useId();
 
-  const [inputValue, setInputValue] = useState<string>(currentValue);
+  const inputValue = currentValue ?? "";
   const [hasError, setHasError] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [charCount, setCharCount] = useState<number>(currentValue.length);
-
-  useEffect(() => {
-    if (!!currentValue) {
-      setInputValue(currentValue);
-    }
-  }, [currentValue]);
 
   const validateInput = (value: string): boolean => {
     let regexPattern: RegExp;
@@ -389,12 +378,11 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     setHasError(error);
     setErrorMessage(errorText);
 
-    if (!!capitalize) {
+    if (capitalize) {
       const capitalizedWord = autocapitalize(processedValue, capitalize);
-      setInputValue(capitalizedWord);
+
       onChange?.(capitalizedWord);
     } else {
-      setInputValue(processedValue);
       onChange?.(processedValue);
     }
   };
@@ -403,7 +391,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     setShowPassword(!showPassword);
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     const char = event.key;
 
     // Prevent invalid input
@@ -420,7 +408,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
   };
 
   // --- IMPORT HANDLERS ---
-  const handleJsonImport = async () => {
+  const handleJsonImport = async (): Promise<void> => {
     if (!importProp?.jsonAccessor) {
       setHasError(true);
       setErrorMessage("JSON accessor is required for JSON import.");
@@ -453,7 +441,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     }
   };
 
-  const handleTextImport = async () => {
+  const handleTextImport = async (): Promise<void> => {
     try {
       const file = await selectFile(".txt");
       const text = await file.text();
@@ -473,7 +461,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     }
   };
 
-  const handleClipboardImport = async () => {
+  const handleClipboardImport = async (): Promise<void> => {
     try {
       const text = await navigator.clipboard.readText();
       applyValue(text);
@@ -484,9 +472,8 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     }
   };
 
-  const applyValue = (value: string) => {
+  const applyValue = (value: string): void => {
     const processed = capitalize ? autocapitalize(value, capitalize) : value;
-    setInputValue(processed);
     setCharCount(processed.length);
     onChange?.(processed);
     setHasError(false);
@@ -506,7 +493,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     });
   };
 
-  const renderImportIcons = () => {
+  const renderImportIcons = (): JSX.Element | null => {
     if (!importProp) return null;
 
     const icons: JSX.Element[] = [];
@@ -515,7 +502,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
       tooltip: string,
       icon: JSX.Element,
       onClick: () => void,
-    ) =>
+    ): number =>
       icons.push(
         <ImportButton
           key={tooltip}
@@ -610,11 +597,15 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
           value={inputValue}
           onChange={handleChange}
           $haserror={hasError}
-          placeholder={isLabelHint ? label : ""}
+          placeholder={
+            placeholder?.trim() ? placeholder : isLabelHint ? label : ""
+          }
           className={className}
           disabled={disabled}
           onBlur={onBlur}
           onKeyDown={handleKeyDown}
+          autoFocus={autofocus}
+          data-private={sensitive ? true : undefined}
         />
         {type === "password" && (
           <ToggleIcon onClick={togglePasswordVisibility} disabled={disabled}>

@@ -4,7 +4,7 @@ import styled from "styled-components";
 export const DividerGlobal = styled.div`
   height: 1px;
   width: 100%;
-  box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.1);
+
   opacity: 0.9;
   background-color: ${({ theme }) => theme.colors.secondaryBackground};
 `;
@@ -41,7 +41,7 @@ export const TitleHeader = styled.h1`
   color: ${({ theme }) => theme.colors.textPrimary};
   font-size: ${({ theme }) => theme.typography.sizes.header};
   font-weight: ${({ theme }) => theme.typography.weights.title};
-  text-align: center;
+  text-align: left;
   min-width: 270px;
 
   text-overflow: ellipsis;
@@ -103,9 +103,13 @@ export const SectionTitle = styled.p<SectionTitleProps>`
   font-weight: 700;
   border-radius: ${({ theme }) => theme.borders.radius.medium};
   margin: 10px 0px;
-  color: ${({ theme }) => theme.colors.textPrimary};
+  color: ${({ theme }) => theme.colors.primaryBackground};
 
-  background-color: ${({ theme }) => theme.colors.accent};
+  background: linear-gradient(
+    to left,
+    ${({ theme }) => theme.colors.primaryBackground},
+    ${({ theme }) => theme.colors.primary}
+  );
   text-align: ${(props) => props.alignment || "left"};
 `;
 
@@ -116,22 +120,26 @@ export const SectionTitleFrame = styled.div<SectionTitleProps>`
   font-weight: 700;
   border-radius: ${({ theme }) => theme.borders.radius.medium};
   margin: 10px 0px;
-  color: ${({ theme }) => theme.colors.textPrimary};
-  background-color: ${({ theme }) => theme.colors.accent};
+  color: ${({ theme }) => theme.colors.primaryBackground};
+  background: linear-gradient(
+    to left,
+    ${({ theme }) => theme.colors.primaryBackground},
+    ${({ theme }) => theme.colors.primary}
+  );
   text-align: ${(props) => props.alignment || "left"};
 `;
 
 export const SectionSubTitle = styled.div<SectionTitleProps>`
   width: 100%;
-  padding: 5px 0px;
+  padding: 10px 0px;
   font-size: 20px;
   font-weight: 700;
 
-  margin: 5px 0px;
-  margin-bottom: 5px;
+  margin: 10px 0px;
+  margin-bottom: 15px;
   color: ${({ theme }) => theme.colors.primary};
   text-align: ${(props) => props.alignment || "left"};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.textSecondary};
+  border-bottom: 2px solid ${({ theme }) => theme.colors.primary};
 `;
 
 export const GeneralStatus = styled.div`
@@ -242,27 +250,5 @@ export const WindowRootContainer = styled.div`
     margin: 5em 0.1em;
     margin-top: 1em;
     max-width: 380px;
-  }
-`;
-
-export const MobileView = styled.div`
-  display: none;
-  gap: 10px;
-
-  height: 100%;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-direction: column;
-  }
-`;
-
-export const DesktopView = styled.div`
-  height: 100%;
-  width: 100%;
-
-  @media (max-width: 768px) {
-    display: none;
   }
 `;

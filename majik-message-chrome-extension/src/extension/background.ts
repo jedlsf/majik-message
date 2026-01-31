@@ -1,24 +1,31 @@
 // Background service worker for MajikMessage
 // Handles dynamic context menu actions and forwards messages to content script
 
-import { MajikMessage } from "../SDK/majik-message/majik-message";
-import { KeyStore } from "../SDK/majik-message/core/crypto/keystore";
-import { EnvelopeCache } from "../SDK/majik-message/core/messages/envelope-cache";
-import { MessageEnvelope } from "../SDK/majik-message/core/messages/message-envelope";
+import {
+  KeyStore,
+  EnvelopeCache,
+  MessageEnvelope,
+} from "@thezelijah/majik-message";
+
 import { base64DecodeUtf8 } from "../lib/majik-file-utils";
+import { MajikMessageDatabase } from "../components/majik-context-wrapper/majik-message-database";
 
 console.log("MajikMessage background worker starting");
 
-let majikInstance: MajikMessage | null = null;
+let majikInstance: MajikMessageDatabase | null = null;
 let scanningEnabled = false;
 let globalPassphrase: string | null = null;
 
 async function initMajik() {
   if (!majikInstance) {
-    majikInstance = await MajikMessage.loadOrCreate({
-      keyStore: KeyStore,
-      envelopeCache: new EnvelopeCache(),
-    });
+    majikInstance =
+      await MajikMessageDatabase.loadOrCreate<MajikMessageDatabase>(
+        {
+          keyStore: KeyStore,
+          envelopeCache: new EnvelopeCache(undefined, "default"),
+        },
+        "default",
+      );
   }
 
   return majikInstance;
@@ -132,7 +139,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       target = "self";
     } else if (info.menuItemId.toString().startsWith("encrypt_contact_")) {
       const index = parseInt(
-        info.menuItemId.toString().replace("encrypt_contact_", "")
+        info.menuItemId.toString().replace("encrypt_contact_", ""),
       );
       const contacts = await getContacts();
       target = contacts[index];
@@ -189,7 +196,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case "decryptEnvelope": {
       console.log(
         "[Majik Message] Received decryption request in background server:",
-        msg.encryptedText
+        msg.encryptedText,
       );
       if (!msg?.encryptedText) {
         console.error("No text to decrypt");
@@ -216,7 +223,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
           // return the Promise from unlockIdentity for next then
           return KeyStore.unlockIdentity(activeAccount.id, passphrase).then(
-            () => ({ majik, envelope })
+            () => ({ majik, envelope }),
           );
         })
         .then(({ majik, envelope }) => {

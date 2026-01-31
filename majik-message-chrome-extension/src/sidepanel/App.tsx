@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import ContactsPanel from "../components/panels/ContactsPanel";
 import ScannerPanel from "../components/panels/ScannerPanel";
 import UnlockModal from "../components/UnlockModal";
-import { KeyStore } from "../SDK/majik-message/core/crypto/keystore";
+import { KeyStore, MajikContact } from "@thezelijah/majik-message";
 
 import AccountsPanel from "../components/panels/AccountsPanel";
-import { MajikMessage } from "../SDK/majik-message/majik-message";
-import { useMajik } from "./MajikMessageWrapper";
+
 import { toast, Toaster } from "sonner";
 import DynamicPlaceholder from "../components/foundations/DynamicPlaceholder";
 import styled from "styled-components";
@@ -21,6 +20,8 @@ import {
   UserIcon,
 } from "@phosphor-icons/react";
 import MessagePanel from "../components/panels/MessagePanel";
+import { useMajik } from "../components/majik-context-wrapper/use-majik";
+import { MajikMessageDatabase } from "../components/majik-context-wrapper/majik-message-database";
 
 const RootContainer = styled.div`
   display: flex;
@@ -28,6 +29,7 @@ const RootContainer = styled.div`
   overflow: hidden;
   width: inherit;
   background-color: ${({ theme }) => theme.colors.primaryBackground};
+  height: 100dvh;
 `;
 
 function App() {
@@ -37,7 +39,8 @@ function App() {
     ((s: string) => void) | null
   >(null);
 
-  const [, setRefreshKey] = useState<number>(0);
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+  const [unlocked, setUnlocked] = useState<boolean>(false);
 
   useEffect(() => {
     // Wire KeyStore.onUnlockRequested to present our React modal
@@ -69,7 +72,7 @@ function App() {
         console.log("Access granted: Identity unlocked");
       } catch (err) {
         toast.error("Unlock failed", {
-          description: `Incorrect passphrase. Please try again. ${err}`,
+          description: `${err}`,
           id: "toast-error-unlock",
         });
         console.warn("Failed to unlock identity:", err);
@@ -80,22 +83,42 @@ function App() {
     unlockIdentity();
   }, [majik]); // add dependencies as needed
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     if (unlockResolver) unlockResolver("");
     setUnlockId(null);
     setUnlockResolver(null);
+    setRefreshKey((prev) => prev + 1);
   };
 
-  const handleSubmit = (pass: string) => {
+  const handleSwitchAccount = async (
+    newAccount: MajikContact,
+  ): Promise<void> => {
+    handleCancel();
+    setUnlockId(newAccount.id);
+    await majik.ensureIdentityUnlocked(newAccount.id);
+    toast.success("Access granted", {
+      description: "Your identity has been securely unlocked.",
+      id: "toast-success-unlock",
+    });
+  };
+
+  const handleSubmit = (pass: string): void => {
     if (unlockResolver) unlockResolver(pass);
     setUnlockId(null);
     setUnlockResolver(null);
+    setUnlocked(true);
   };
 
-  const handleRefreshInstance = (data: MajikMessage) => {
-    setRefreshKey((prev) => prev + 1);
+  const handleRefreshInstance = (data: MajikMessageDatabase): void => {
     updateInstance(data);
+    setRefreshKey((prev) => prev + 1);
   };
+
+  const userAccounts = useMemo(() => {
+    if (!majik) return [];
+
+    return majik.listOwnAccounts();
+  }, [majik, refreshKey]);
 
   if (!!loading) {
     return (
@@ -116,7 +139,13 @@ function App() {
       id: "accounts",
       icon: UserIcon,
       name: "Accounts",
-      content: <AccountsPanel majik={majik} onUpdate={handleRefreshInstance} />,
+      content: (
+        <AccountsPanel
+          majik={majik}
+          onUpdate={handleRefreshInstance}
+          accounts={userAccounts}
+        />
+      ),
     },
     {
       id: "contacts",
@@ -139,13 +168,17 @@ function App() {
   ];
 
   return (
-    <RootContainer className="popup-container">
+    <RootContainer>
       <DynamicPagedTab tabs={tabs} />
       <UnlockModal
         identityId={unlockId}
         onCancel={handleCancel}
         onSubmit={handleSubmit}
         majik={majik}
+        strict={!unlocked}
+        onSignout={() => setUnlockId(null)}
+        onSwitchAccount={handleSwitchAccount}
+        onReset={handleCancel}
       />
       <Toaster expand={true} position="top-right" />
     </RootContainer>

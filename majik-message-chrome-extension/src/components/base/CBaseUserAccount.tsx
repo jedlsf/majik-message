@@ -1,103 +1,95 @@
 import React, { useEffect, useState } from "react";
 import styled, { css } from "styled-components";
-import { MajikContact } from "../../SDK/majik-message/core/contacts/majik-contact";
+import { MajikContact } from "@thezelijah/majik-message";
 import { isDevEnvironment } from "../../utils/utils";
 import DeleteButton from "../foundations/DeleteButton";
-import RowTextItem from "../foundations/RowTextItem";
 import StyledIconButton from "../foundations/StyledIconButton";
 import {
   CheckCircleIcon,
   GearIcon,
+  KeyIcon,
   LinkIcon,
   PencilIcon,
   ProhibitIcon,
   StarIcon,
+  WifiHighIcon,
+  WifiSlashIcon,
 } from "@phosphor-icons/react";
 import ConfirmationButton from "../foundations/ConfirmationButton";
 import theme from "../../globals/theme";
 import PopUpFormButton from "../foundations/PopUpFormButton";
 import CustomInputField from "../foundations/CustomInputField";
-import { useMajik } from "../../sidepanel/MajikMessageWrapper";
+
 import { toast } from "sonner";
+import { useMajik } from "../majik-context-wrapper/use-majik";
+
+
 
 // Styled components
 const RootContainer = styled.div<{ $isActive?: boolean }>`
- 
   width: inherit;
+  height: fit-content;
+
   border: 1px solid transparent;
   border-radius: 8px;
-   display: flex;
- flex-direction: column;
- gap: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 
-   user-select: none;
+  user-select: none;
   transition: all 0.3s ease;
 
-     @media (hover: hover) and (pointer: fine) {
-
-   &:hover {
-        border: 1px solid ${({ theme }) => theme.colors.secondaryBackground};
-
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border: 1px solid ${({ theme }) => theme.colors.secondaryBackground};
+    }
   }
 
   ${({ $isActive }) =>
     $isActive &&
     css`
-      background-color: ${({ theme }) => theme.colors.accent};
+      background: ${({ theme }) => theme.gradients.strong};
     `}
-
-
 `;
 
-const BodyContainer = styled.div`
-  background-color: ${({ theme }) => theme.colors.secondaryBackground};
-  border-radius: 12px;
+const BodyContainer = styled.div<{ $isActive?: boolean }>`
   display: flex;
-  width: 100%;
-    padding: 0px;
-  transition: all 0.4s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.085);
+  flex-direction: column;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  background-color: ${({ theme }) => theme.colors.secondaryBackground};
 
-  @media (hover: hover) and (pointer: fine) {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
-   &:hover {
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.24);
-       border-radius: 0px 0px 12px 12px;
-
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
   }
 `;
 
-const ColumnMain = styled.div`
-  flex: 2;
+const Header = styled.div`
   display: flex;
-  flex-direction: column;
-  justify-content: left;
-  text-align: left;
-`;
-
-const ColumnInfo = styled.div`
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: space-between;
-  text-align: left;
-  gap: 25px;
-  width: 100%;
-  padding: 15px;
 `;
 
-const ItemTitle = styled.div<{ $blocked?: boolean }>`
-  font-size: 16px;
-  font-weight: 500;
+const Label = styled.h3<{ $blocked?: boolean; $isActive?: boolean }>`
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
   color: ${({ theme, $blocked }) =>
     $blocked ? theme.colors.error : theme.colors.textPrimary};
 `;
 
-const SubColumnContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  width: 100%;
-  margin-bottom: 10px;
+const PublicKey = styled.p<{ $isActive?: boolean }>`
+  font-size: 0.7rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
+  word-break: break-all;
+  margin-top: 8px;
+  text-align: left;
 `;
 
 const ActionButtonRow = styled.div<{ $enableHover?: boolean }>`
@@ -127,7 +119,7 @@ const ActionButtonRow = styled.div<{ $enableHover?: boolean }>`
 const UserNameRow = styled.div`
   display: flex;
   flex-direction: row;
-  gap: 3px;
+  gap: 10px;
   align-items: center;
   justify-content: flex-start;
   transition: all 0.2s ease;
@@ -145,10 +137,13 @@ interface CBaseUserAccountProps {
   onEdit?: (data: MajikContact) => void;
   onDelete?: (data: MajikContact) => void;
   onShare?: (data: MajikContact) => void;
+  onCopyPublicKey?: (data: MajikContact) => void;
   onSetActive?: (data: MajikContact) => void;
   onBlock?: (data: MajikContact) => void;
   onUnBlock?: (data: MajikContact) => void;
   onUpdatePassphrase?: (params: PassphraseUpdateParams) => void;
+  onUpdateName?: (name: string) => void;
+  onRegister?: (data: MajikContact) => void;
   canEdit?: boolean;
   canDelete?: boolean;
   index?: number;
@@ -160,10 +155,13 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
   onDelete,
   onEdit,
   onShare,
+  onCopyPublicKey,
   onSetActive,
   onBlock,
   onUnBlock,
   onUpdatePassphrase,
+  onUpdateName,
+  onRegister,
   canEdit = true,
   canDelete = true,
   index,
@@ -177,9 +175,31 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
         new: "",
       },
     });
+  const [newName, setNewName] = useState<string | null>(
+    itemData?.meta?.label || null,
+  );
 
-  const [isValid, setIsValid] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isValid, setIsValid] = useState<boolean>(false);
+  const [isChecking, setIsChecking] = useState<boolean>(false);
+
+  const [publicKey, setPublicKey] = useState<string>("Loading...");
+
+  // fetch public key when itemData changes
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchKey = async (): Promise<void> => {
+      if (!itemData) return;
+      const key = await itemData.getPublicKeyBase64();
+      if (!cancelled) setPublicKey(key);
+    };
+
+    fetchKey();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [itemData]);
 
   useEffect(() => {
     if (!majik || !itemData?.id) return;
@@ -212,7 +232,7 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
     };
   }, [passphraseUpdate?.passphrase?.old, majik, itemData.id]);
 
-  const handleOnPressed = () => {
+  const handleOnPressed = (): void => {
     if (isDevEnvironment())
       console.log("MajikContact Item Pressed from Base: ", itemData);
 
@@ -220,7 +240,7 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
     if (onPressed) onPressed(itemData);
   };
 
-  const handleSubmitPassphraseUpdate = () => {
+  const handleSubmitPassphraseUpdate = (): void => {
     if (!itemData) return;
 
     if (passphraseUpdate.passphrase.old === passphraseUpdate.passphrase.new) {
@@ -234,11 +254,39 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
     if (isDevEnvironment()) console.log("Submitting: ", passphraseUpdate);
 
     onUpdatePassphrase?.(passphraseUpdate);
+    resetSubmission();
 
     if (isDevEnvironment()) console.log("Passphrase Update Submitted");
   };
 
-  const resetSubmission = () => {
+  const handleSubmitNameUpdate = (): void => {
+    if (!itemData) return;
+
+    if (isDevEnvironment()) console.log("Submitting: ", passphraseUpdate);
+
+    if (!newName?.trim()) {
+      toast.error("Invalid Name", {
+        description: "Display name must not be empty.",
+      });
+      resetSubmission();
+      return;
+    }
+
+    if (itemData.meta.label === newName) {
+      toast.error("No Changes Made", {
+        description:
+          "New display name must not be the same as the old display name.",
+      });
+      resetSubmission();
+      return;
+    }
+
+    onUpdateName?.(newName);
+
+    if (isDevEnvironment()) console.log("Display Name Update Submitted");
+  };
+
+  const resetSubmission = (): void => {
     if (isDevEnvironment()) console.log("Resetting State");
     setPassphraseUpdate({
       id: itemData.id,
@@ -247,6 +295,7 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
         new: "",
       },
     });
+    setNewName(itemData?.meta?.label || null);
   };
 
   return (
@@ -266,13 +315,50 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
             size={24}
           />
         ) : null}
-        {!!onEdit && onEdit !== undefined && !!onEdit ? (
-          <StyledIconButton
-            icon={PencilIcon}
-            title="Edit"
-            onClick={() => onEdit?.(itemData)}
-            size={24}
+
+        {!!onRegister &&
+        onRegister !== undefined &&
+        !itemData?.isMajikahRegistered() ? (
+          <ConfirmationButton
+            text="Register Online"
+            onClick={() => onRegister?.(itemData)}
+            icon={WifiHighIcon}
+            alertTextTitle="Register Online"
+            strict
           />
+        ) : null}
+        {!!onUpdateName && onUpdateName !== undefined && !!onUpdateName ? (
+          <PopUpFormButton
+            icon={PencilIcon}
+            text="Edit"
+            modal={{
+              title: "Edit Label",
+              description: "Update your account label.",
+            }}
+            buttons={{
+              cancel: {
+                text: "Cancel",
+              },
+              confirm: {
+                text: "Save Changes",
+                isDisabled: !newName?.trim(),
+                onClick: handleSubmitNameUpdate,
+              },
+            }}
+          >
+            <CustomInputField
+              currentValue={newName ?? undefined}
+              onChange={(e) => setNewName(e)}
+              maxChar={100}
+              regex="letters"
+              label="Display Name"
+              required
+              importProp={{
+                type: "txt",
+              }}
+              sensitive={true}
+            />
+          </PopUpFormButton>
         ) : null}
         {!!onUpdatePassphrase &&
         onUpdatePassphrase !== undefined &&
@@ -280,14 +366,24 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
           <PopUpFormButton
             icon={GearIcon}
             text="Change Passphrase"
-            alertTextTitle="Change Passphrase"
-            onClick={handleSubmitPassphraseUpdate}
-            isDisabledButtonB={
-              !passphraseUpdate?.id?.trim() ||
-              !isValid ||
-              !passphraseUpdate?.passphrase?.old?.trim() ||
-              !passphraseUpdate?.passphrase?.new?.trim()
-            }
+            modal={{
+              title: "Change Passphrase",
+              description: "Update your account passphrase.",
+            }}
+            buttons={{
+              cancel: {
+                text: "Cancel",
+              },
+              confirm: {
+                text: "Save Changes",
+                isDisabled:
+                  !passphraseUpdate?.id?.trim() ||
+                  !isValid ||
+                  !passphraseUpdate?.passphrase?.old?.trim() ||
+                  !passphraseUpdate?.passphrase?.new?.trim(),
+                onClick: handleSubmitPassphraseUpdate,
+              },
+            }}
           >
             <CustomInputField
               label="Enter Old Password"
@@ -332,6 +428,16 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
             size={24}
           />
         ) : null}
+        {!!onCopyPublicKey &&
+        onCopyPublicKey !== undefined &&
+        !!onCopyPublicKey ? (
+          <StyledIconButton
+            icon={KeyIcon}
+            title="Copy Public Key"
+            onClick={() => onCopyPublicKey?.(itemData)}
+            size={24}
+          />
+        ) : null}
         {!!onBlock && onBlock !== undefined && !itemData?.isBlocked() ? (
           <ConfirmationButton
             text="Block"
@@ -356,27 +462,28 @@ const CBaseUserAccount: React.FC<CBaseUserAccountProps> = ({
           <DeleteButton title="contact" onClick={() => onDelete?.(itemData)} />
         ) : null}
       </ActionButtonRow>
-      <BodyContainer onClick={handleOnPressed}>
-        <ColumnInfo>
-          <ColumnMain>
-            <UserNameRow>
-              <ItemTitle $blocked={itemData?.isBlocked()}>
-                {itemData?.meta?.label ?? "User Account"}
-              </ItemTitle>
-              {itemData?.isBlocked() && (
-                <ProhibitIcon size={18} color={theme.colors.error} />
-              )}
-            </UserNameRow>
-
-            <SubColumnContainer>
-              <RowTextItem
-                textKey="Address"
-                textValue={itemData?.id}
-                highlight={true}
-              />
-            </SubColumnContainer>
-          </ColumnMain>
-        </ColumnInfo>
+      <BodyContainer onClick={handleOnPressed} $isActive={index === 0}>
+        <Header>
+          <UserNameRow>
+            <Label
+              $blocked={itemData?.isBlocked()}
+              $isActive={index === 0}
+              data-private
+            >
+              {itemData?.meta?.label || "User Account"}
+            </Label>
+            <WifiSlashIcon size={18} color={theme.colors.textPrimary}>
+              <title>Local Only</title>
+            </WifiSlashIcon>
+            {itemData?.isBlocked() && (
+              <ProhibitIcon size={18} color={theme.colors.error} />
+            )}
+          </UserNameRow>
+          {/* <OnlineIndicator online={isOnline} /> */}
+        </Header>
+        <PublicKey $isActive={index === 0} data-private>
+          {publicKey}
+        </PublicKey>
       </BodyContainer>
     </RootContainer>
   );

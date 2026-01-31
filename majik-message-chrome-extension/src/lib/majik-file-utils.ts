@@ -1,6 +1,6 @@
 import APITranscoder, {
   SerializedEncryptedData,
-} from "../SDK/majik-message/core/utils/APITranscoder";
+} from "../SDK/utils/APITranscoder";
 
 interface MajikFileData {
   /** JSON object */
@@ -17,7 +17,7 @@ export async function importMajikFileData(file: File): Promise<MajikFileData> {
 
   if (!file.name.endsWith(".mjkb")) {
     throw new Error(
-      "Oops! Only .mjkb files are allowed. Please load a valid MajikFile."
+      "Oops! Only .mjkb files are allowed. Please load a valid MajikFile.",
     );
   }
 
@@ -40,12 +40,10 @@ export async function importMajikFileData(file: File): Promise<MajikFileData> {
 }
 
 export async function loadSavedMajikFileData(
-  file: Blob
+  file: Blob,
 ): Promise<MajikFileData> {
   try {
     const content = await readBlobFile(file);
-
-
 
     // Step 2: base64 → UTF-8 JSON string
     const jsonString = base64DecodeUtf8(content);
@@ -66,7 +64,7 @@ export async function loadSavedMajikFileData(
 
 export function autoSaveMajikFileData(
   json: unknown,
-  version: string = "1.0.0"
+  version: string = "1.0.0",
 ): Blob {
   const rawData = {
     j: json,
@@ -89,7 +87,7 @@ export function autoSaveMajikFileData(
 export function exportMajikFileData(
   json: unknown,
   name: string,
-  version: string = "1.0.0"
+  version: string = "1.0.0",
 ): void {
   const rawData = {
     j: json,
@@ -172,7 +170,7 @@ function readBlobFile(blob: Blob): Promise<string> {
  * @throws {Error} Throws an error if the input is not a valid time format.
  */
 function secureTimecode(
-  input?: number | Date | string | null | undefined
+  input?: number | Date | string | null | undefined,
 ): string {
   const unixTimestamp = (() => {
     if (input === null || input === undefined)
@@ -182,7 +180,7 @@ function secureTimecode(
     if (typeof input === "string")
       return Math.floor(new Date(input).getTime() / 1000);
     throw new Error(
-      "Invalid input type. Must be Unix timestamp, Date object, or ISO string."
+      "Invalid input type. Must be Unix timestamp, Date object, or ISO string.",
     );
   })();
 

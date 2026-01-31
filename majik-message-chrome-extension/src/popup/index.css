@@ -59,8 +59,6 @@ html body[data-scroll-locked] {
   margin-right: 0 !important;
 }
 
-
-
 .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

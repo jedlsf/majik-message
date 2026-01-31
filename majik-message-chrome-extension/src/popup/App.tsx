@@ -2,19 +2,29 @@ import { useEffect, useState } from "react";
 
 import ScannerPanel from "../components/panels/ScannerPanel";
 import UnlockModal from "../components/UnlockModal";
-import { KeyStore } from "../SDK/majik-message/core/crypto/keystore";
+import { KeyStore, MajikContact } from "@thezelijah/majik-message";
 
 import { toast, Toaster } from "sonner";
 import DynamicPlaceholder from "../components/foundations/DynamicPlaceholder";
 import styled from "styled-components";
-
-import { useMajik } from "../sidepanel/MajikMessageWrapper";
+import { useMajik } from "../components/majik-context-wrapper/use-majik";
 
 const RootContainer = styled.div`
   display: flex;
   flex-direction: column;
-  width: 400px;
+  width: 100%;
+  min-width: 550px;
   background-color: ${({ theme }) => theme.colors.primaryBackground};
+  min-height: 550px;
+  padding: 25px;
+`;
+
+const MessageText = styled.p`
+  width: 100%;
+  text-align: center;
+  margin: 8px;
+  font-size: 16px;
+  color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
 function App() {
@@ -23,6 +33,8 @@ function App() {
   const [unlockResolver, setUnlockResolver] = useState<
     ((s: string) => void) | null
   >(null);
+
+  const [unlocked, setUnlocked] = useState<boolean>(false);
 
   useEffect(() => {
     // Wire KeyStore.onUnlockRequested to present our React modal
@@ -75,6 +87,19 @@ function App() {
     if (unlockResolver) unlockResolver(pass);
     setUnlockId(null);
     setUnlockResolver(null);
+    setUnlocked(true);
+  };
+
+  const handleSwitchAccount = async (
+    newAccount: MajikContact,
+  ): Promise<void> => {
+    handleCancel();
+    setUnlockId(newAccount.id);
+    await majik.ensureIdentityUnlocked(newAccount.id);
+    toast.success("Access granted", {
+      description: "Your identity has been securely unlocked.",
+      id: "toast-success-unlock",
+    });
   };
 
   if (!!loading) {
@@ -85,24 +110,29 @@ function App() {
 
   if (!majik?.getActiveAccount()) {
     return (
-      <DynamicPlaceholder loading={loading}>
-        <strong>Get started</strong> <br />
-        Create your account in the side panel to continue.
-      </DynamicPlaceholder>
+      <RootContainer className="popup-container">
+        <DynamicPlaceholder loading={loading}>
+          <strong>Get started</strong> <br />
+          Create your account in the side panel to continue.
+        </DynamicPlaceholder>
+      </RootContainer>
     );
   }
 
   return (
     <RootContainer className="popup-container">
       <ScannerPanel majik={majik} showHistoryLog={false} />
-      <p className="text-center m-8">
+      <MessageText>
         <i>Open the extension side panel to access advanced options.</i>
-      </p>
+      </MessageText>
       <UnlockModal
         identityId={unlockId}
         onCancel={handleCancel}
         onSubmit={handleSubmit}
         majik={majik}
+        onSignout={() => setUnlockId(null)}
+        onSwitchAccount={handleSwitchAccount}
+        strict={!unlocked}
       />
       <Toaster expand={true} position="top-right" />
     </RootContainer>

@@ -10,7 +10,7 @@ import React, { JSX, useEffect, useId, useState } from "react";
 import styled from "styled-components";
 import { Tooltip } from "react-tooltip";
 import CustomInputField from "./CustomInputField";
-import { KeyStore } from "../../SDK/majik-message/core/crypto/keystore";
+import { KeyStore } from "@thezelijah/majik-message";
 
 /* -------------------------------
  * Styled Components
@@ -133,7 +133,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
 }) => {
   const tooltipId = useId();
   const [words, setWords] = useState<string[]>(
-    () => currentValue?.seed || [...EMPTY_SEED]
+    () => currentValue?.seed || [...EMPTY_SEED],
   );
 
   const [hasError, setHasError] = useState<boolean>(false);
@@ -150,7 +150,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
 
   const [jsonID, setJSONID] = useState<string>(currentValue?.id || "");
   const [passphrase, setPassphrase] = useState<string>(
-    currentValue?.phrase || ""
+    currentValue?.phrase || "",
   );
 
   useEffect(() => {
@@ -185,7 +185,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
 
   const handlePaste = (
     index: number,
-    e: React.ClipboardEvent<HTMLInputElement>
+    e: React.ClipboardEvent<HTMLInputElement>,
   ) => {
     if (index !== 0) return;
 
@@ -327,7 +327,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
     const pushIcon = (
       tooltip: string,
       icon: JSX.Element,
-      onClick: () => void
+      onClick: () => void,
     ) =>
       icons.push(
         <ImportButton
@@ -339,7 +339,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
           data-tooltip-content={tooltip}
         >
           {icon}
-        </ImportButton>
+        </ImportButton>,
       );
 
     switch (importProp.type) {
@@ -347,7 +347,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
         pushIcon(
           "Import a JSON file",
           <FileJsonIcon width={16} />,
-          handleJsonImport
+          handleJsonImport,
         );
         break;
 
@@ -355,7 +355,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
         pushIcon(
           "Import a text file",
           <TextAaIcon width={16} />,
-          handleTextImport
+          handleTextImport,
         );
         break;
 
@@ -363,7 +363,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
         pushIcon(
           "Paste text from clipboard",
           <ClipboardIcon width={16} />,
-          handleClipboardImport
+          handleClipboardImport,
         );
         break;
 
@@ -371,17 +371,17 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
         pushIcon(
           "Import a JSON file",
           <FileJsonIcon width={16} />,
-          handleJsonImport
+          handleJsonImport,
         );
         pushIcon(
           "Import a text file",
           <TextAaIcon width={16} />,
-          handleTextImport
+          handleTextImport,
         );
         pushIcon(
           "Paste text from clipboard",
           <ClipboardIcon width={16} />,
-          handleClipboardImport
+          handleClipboardImport,
         );
         break;
     }
@@ -391,7 +391,7 @@ export const SeedKeyInput: React.FC<SeedKeyInputProps> = ({
       pushIcon(
         "Generate Seed",
         <DiceFiveIcon width={16} />,
-        handleGenerateMnemonic
+        handleGenerateMnemonic,
       );
     return (
       <div

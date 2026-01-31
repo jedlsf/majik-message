@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-import { KeyStore } from "../../SDK/majik-message/core/crypto/keystore";
+import { KeyStore, MajikContact } from "@thezelijah/majik-message";
 import UnlockModal from "../../components/UnlockModal";
-import { Toaster } from "sonner";
+import { toast, Toaster } from "sonner";
+import { useMajik } from "../../components/majik-context-wrapper/use-majik";
 
 function App() {
+  const { majik } = useMajik();
   const [unlockId, setUnlockId] = useState<string | null>(null);
   const [unlockResolver, setUnlockResolver] = useState<
     ((s: string) => void) | null
@@ -25,6 +27,18 @@ function App() {
     };
   }, []);
 
+  const handleSwitchAccount = async (
+    newAccount: MajikContact,
+  ): Promise<void> => {
+    handleCancel();
+    setUnlockId(newAccount.id);
+    await majik.ensureIdentityUnlocked(newAccount.id);
+    toast.success("Access granted", {
+      description: "Your identity has been securely unlocked.",
+      id: "toast-success-unlock",
+    });
+  };
+
   const handleCancel = () => {
     if (unlockResolver) unlockResolver("");
     setUnlockId(null);
@@ -43,6 +57,9 @@ function App() {
         identityId={unlockId}
         onCancel={handleCancel}
         onSubmit={handleSubmit}
+        majik={majik}
+        onSignout={() => setUnlockId(null)}
+        onSwitchAccount={handleSwitchAccount}
       />
       <Toaster expand={true} position="top-right" />
     </div>

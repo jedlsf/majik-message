@@ -3,11 +3,13 @@ import { useMemo, useState } from "react";
 import PopUpFormButton from "../foundations/PopUpFormButton";
 import { UserPlusIcon } from "@phosphor-icons/react";
 import CustomInputField from "../foundations/CustomInputField";
-import { MajikMessage } from "../../SDK/majik-message/majik-message";
 
 import { toast } from "sonner";
 import CBaseUserAccount from "../base/CBaseUserAccount";
 import { SectionTitleFrame } from "../../globals/styled-components";
+import { MajikMessageDatabase } from "../majik-context-wrapper/majik-message-database";
+import DynamicPlaceholder from "../foundations/DynamicPlaceholder";
+import ThemeToggle from "../functional/ThemeToggle";
 
 const Container = styled.div`
   width: inherit;
@@ -35,8 +37,8 @@ const List = styled.div`
 `;
 
 interface ContactsPanelProps {
-  majik?: MajikMessage | null;
-  onUpdate?: (updatedInstance: MajikMessage) => void;
+  majik: MajikMessageDatabase;
+  onUpdate?: (updatedInstance: MajikMessageDatabase) => void;
 }
 
 const ContactsPanel: React.FC<ContactsPanelProps> = ({ majik, onUpdate }) => {
@@ -127,15 +129,27 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({ majik, onUpdate }) => {
 
   return (
     <Container>
+      <ThemeToggle size={45} />
       <SectionTitleFrame>
         <Row>
           <h2>Contacts</h2>
           <div style={{ display: "flex", flexDirection: "row" }}>
             <PopUpFormButton
               icon={UserPlusIcon}
-              text="Add Friend"
-              alertTextTitle="Add Friend"
-              onClick={handleAddContact}
+              text="Add Contact"
+              modal={{
+                title: "Add Contact",
+                description: "Add a new contact to your list.",
+              }}
+              buttons={{
+                cancel: {
+                  text: "Cancel",
+                },
+                confirm: {
+                  text: "Save Changes",
+                  onClick: handleAddContact,
+                },
+              }}
             >
               <CustomInputField
                 onChange={(e) => setInviteKey(e)}
@@ -151,11 +165,9 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({ majik, onUpdate }) => {
         </Row>
       </SectionTitleFrame>
 
-      <List>
-        {contacts.length === 0 ? (
-          <div>No contacts</div>
-        ) : (
-          contacts.map((c) => (
+      {contacts.length > 0 ? (
+        <List>
+          {contacts.map((c) => (
             <CBaseUserAccount
               key={c.id}
               itemData={c}
@@ -163,9 +175,16 @@ const ContactsPanel: React.FC<ContactsPanelProps> = ({ majik, onUpdate }) => {
               // onBlock={() => handleBlock(c.id)}
               // onUnBlock={() => handleUnBlock(c.id)}
             />
-          ))
-        )}
-      </List>
+          ))}
+        </List>
+      ) : (
+        <List>
+          <DynamicPlaceholder>
+            {" "}
+            You haven&apos;t added any contacts yet.
+          </DynamicPlaceholder>
+        </List>
+      )}
     </Container>
   );
 };

@@ -1,4 +1,3 @@
-
 import React from "react";
 import styled, { css } from "styled-components";
 
@@ -9,7 +8,7 @@ import StyledIconButton from "../foundations/StyledIconButton";
 import { CopyIcon, LockIcon, LockOpenIcon } from "@phosphor-icons/react";
 
 import theme from "../../globals/theme";
-import { EnvelopeCacheItem } from "../../SDK/majik-message/core/messages/envelope-cache";
+import { EnvelopeCacheItem } from "@thezelijah/majik-message";
 import { toast } from "sonner";
 import { ButtonPrimaryConfirm } from "../../globals/buttons";
 import moment from "moment";

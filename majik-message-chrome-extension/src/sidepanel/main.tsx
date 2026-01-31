@@ -5,16 +5,19 @@ import "./index.css";
 import App from "./App";
 import ThemeProviderWrapper from "../globals/ThemeProviderWrapper";
 import ReduxProvider from "../redux/ReduxProvider";
-import { MajikMessageWrapper } from "./MajikMessageWrapper";
+import { MajikahProvider } from "../components/majikah-session-wrapper/MajikahSessionWrapper";
+import { MajikMessageWrapper } from "../components/majik-context-wrapper/MajikMessageWrapper";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ReduxProvider>
       <ThemeProviderWrapper>
-        <MajikMessageWrapper>
-          <App />
-        </MajikMessageWrapper>
+        <MajikahProvider>
+          <MajikMessageWrapper>
+            <App />
+          </MajikMessageWrapper>
+        </MajikahProvider>
       </ThemeProviderWrapper>
     </ReduxProvider>
-  </StrictMode>
+  </StrictMode>,
 );

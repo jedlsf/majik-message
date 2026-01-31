@@ -14,7 +14,7 @@ export function offsetDateTimeByHours(hours: number = 0): string {
 
 export function getLanguageCode(
   languageName: string,
-  languageOptions: { name: string; code: string }[]
+  languageOptions: { name: string; code: string }[],
 ): string | null {
   for (let i = 0; i < languageOptions.length; i++) {
     if (languageOptions[i].name.toLowerCase() === languageName.toLowerCase()) {
@@ -64,14 +64,14 @@ export function parseImage(
   url: string,
   blurhash: string,
   width: number,
-  height: number
+  height: number,
 ): { url: string; blurhash: string; width: number; height: number } {
   return { url, blurhash, width, height };
 }
 
 export function parseDateFromISO(
   dateISO: string,
-  dateOnly: boolean = false
+  dateOnly: boolean = false,
 ): string {
   const date = new Date(dateISO);
   const optionsDate: Intl.DateTimeFormatOptions = {
@@ -112,7 +112,7 @@ export function decodeBase64AndSplit(base64String: string): {
   const parts = decodedString.split(":");
   if (parts.length !== 2) {
     throw new Error(
-      "The decoded string does not contain exactly two parts separated by a colon."
+      "The decoded string does not contain exactly two parts separated by a colon.",
     );
   }
   return { auth: parts[0], timestamp: parts[1] };
@@ -140,7 +140,7 @@ export function formatPercentage(value: number, override = false): string {
 
 export function formatAmountCurrency(
   amount: string | number | null | undefined,
-  currency: string = "PHP"
+  currency: string = "PHP",
 ): string {
   let finalAmount: number | string = amount ? amount : 0;
   if (amount == null) {
@@ -192,7 +192,7 @@ export function formatSmartNumber(input: string | number): string {
 
 export function parseSocials(
   platform: "facebook" | "tiktok" | "threads" | "x" | "instagram",
-  input: string
+  input: string,
 ): string | null {
   if (!input) return null;
 
@@ -282,7 +282,7 @@ export function getSecureKeyFromRQKey(rqkey: string): string | number | object {
  */
 export function secureReverse(
   input: string | object | number,
-  secure: boolean = true
+  secure: boolean = true,
 ): string {
   let str: string;
   if (typeof input === "number") {
@@ -297,7 +297,7 @@ export function secureReverse(
 
   if (secure) {
     // reversedString = btoa(reversedString);
-    reversedString = Buffer.from(reversedString).toString("base64");
+    reversedString = base64Encode(reversedString);
   }
 
   return reversedString;
@@ -314,7 +314,7 @@ export function secureReverse(
 export function decodeReverse(
   reversedString: string,
   mode: string = "string",
-  secure: boolean = true
+  secure: boolean = true,
 ): string | object | number {
   // If secure is true, decode the reversed string from Base64
   if (secure) {
@@ -341,13 +341,18 @@ export function decodeReverse(
 }
 
 // utils/debounce.ts
+type DebouncedFunction<Args extends unknown[]> = {
+  (...args: Args): void;
+  cancel: () => void;
+};
+
 export const debounce = <Args extends unknown[]>(
   func: (...args: Args) => void,
-  delay: number
-) => {
+  delay: number,
+): DebouncedFunction<Args> => {
   let timeoutId: NodeJS.Timeout | undefined;
 
-  const debouncedFunction = (...args: Args) => {
+  const debouncedFunction = (...args: Args): void => {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
@@ -356,7 +361,7 @@ export const debounce = <Args extends unknown[]>(
     }, delay);
   };
 
-  debouncedFunction.cancel = () => {
+  debouncedFunction.cancel = (): void => {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
@@ -369,7 +374,7 @@ export const debounce = <Args extends unknown[]>(
 export function encryptPayload(
   base64String: string,
   dtime: number,
-  bytes = false
+  bytes = false,
 ): number[] | string {
   // Validate dtime value
   if (dtime < 0 || dtime > 255 || !Number.isInteger(dtime)) {
@@ -378,7 +383,7 @@ export function encryptPayload(
 
   // Convert the base64 string to a byte array
   const byteArray = Uint8Array.from(atob(base64String), (char) =>
-    char.charCodeAt(0)
+    char.charCodeAt(0),
   );
 
   // Create a new array to store the encrypted data
@@ -402,11 +407,11 @@ export function encryptPayload(
 // Decryption function
 export function decryptPayload(
   base64String: string,
-  bytes = false
+  bytes = false,
 ): number[] | string {
   // Convert base64 to byte array
   const byteArray = Uint8Array.from(atob(base64String), (char) =>
-    char.charCodeAt(0)
+    char.charCodeAt(0),
   );
 
   // Validate if the byte array length is even (to ensure correct pattern)
@@ -460,7 +465,7 @@ export function prepareToBlobFile(data: unknown): Blob {
     blob = new Blob([...data], { type: "application/octet-stream" });
   } else {
     throw new Error(
-      "Unsupported data type. Provide an object, Base64 string, or byte array."
+      "Unsupported data type. Provide an object, Base64 string, or byte array.",
     );
   }
 
@@ -471,7 +476,7 @@ export function prepareToBlobFile(data: unknown): Blob {
 export function downloadBlob(
   blob: Blob,
   filetype: string,
-  fileName: string
+  fileName: string,
 ): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -496,7 +501,8 @@ export function readBlobFile(blob: Blob): Promise<unknown> {
           const jsonContent = JSON.parse(content as string);
           resolve(jsonContent);
         } else if (blob.type === "text/plain" || blob.type === "") {
-          const isBase64 = (str: string) => /^[A-Za-z0-9+/=]*$/.test(str);
+          const isBase64 = (str: string): boolean =>
+            /^[A-Za-z0-9+/=]*$/.test(str);
           if (isBase64(content as string)) {
             const byteCharacters = atob(content as string);
             const byteNumbers = new Uint8Array(byteCharacters.length);
@@ -566,7 +572,7 @@ export function hasTimePassed(time: number, originTime: string): boolean {
   const originDate = new Date(originTime);
   const currentDate = new Date();
   const elapsedTime = Math.floor(
-    (currentDate.getTime() - originDate.getTime()) / 1000
+    (currentDate.getTime() - originDate.getTime()) / 1000,
   );
   return elapsedTime >= time;
 }
@@ -651,7 +657,7 @@ export function isTimestampValid(unixTimestamp: number): boolean {
  * @throws {Error} Throws an error if the input is not a valid time format.
  */
 export function secureTimecode(
-  input?: number | Date | string | null | undefined
+  input?: number | Date | string | null | undefined,
 ): string {
   const unixTimestamp = (() => {
     if (input === null || input === undefined)
@@ -661,7 +667,7 @@ export function secureTimecode(
     if (typeof input === "string")
       return Math.floor(new Date(input).getTime() / 1000);
     throw new Error(
-      "Invalid input type. Must be Unix timestamp, Date object, or ISO string."
+      "Invalid input type. Must be Unix timestamp, Date object, or ISO string.",
     );
   })();
 
@@ -685,7 +691,7 @@ export function secureTimecode(
  */
 export function decodeSecureTimecode(base64String: string): number {
   const decodedArray = Array.from(atob(base64String)).map((char) =>
-    char.charCodeAt(0)
+    char.charCodeAt(0),
   );
 
   const originalArray = decodedArray.filter((_, i) => i % 2 === 0);
@@ -693,7 +699,7 @@ export function decodeSecureTimecode(base64String: string): number {
 
   if (originalArray.join("") !== reversedArray.join("")) {
     throw new Error(
-      "Validation failed: reversed array does not match the original array."
+      "Validation failed: reversed array does not match the original array.",
     );
   }
 
@@ -710,7 +716,7 @@ export function decodeSecureTimecode(base64String: string): number {
  */
 export function isTimestampExpired(
   durationInSeconds: number,
-  unixTimestamp: number
+  unixTimestamp: number,
 ): boolean {
   if (typeof unixTimestamp !== "number" || isNaN(unixTimestamp)) {
     throw new Error("Invalid unixTimestamp: must be a number.");
@@ -729,7 +735,7 @@ export function isTimestampExpired(
  */
 export function isSTXExpired(
   base64String: string,
-  durationInSeconds: number
+  durationInSeconds: number,
 ): boolean {
   const unixTimestamp = decodeSecureTimecode(base64String);
   return isTimestampExpired(durationInSeconds, unixTimestamp);
@@ -760,7 +766,7 @@ export function isOnMobile(): boolean {
     "ontouchstart" in window || navigator.maxTouchPoints > 0;
   const isScreenSmall = window.innerWidth <= 800 && window.innerHeight <= 800;
   const isMobileUserAgent = mobileUserAgents.some((agent) =>
-    userAgent.includes(agent)
+    userAgent.includes(agent),
   );
 
   return isMobileUserAgent || hasTouchScreen() || isScreenSmall;
@@ -789,7 +795,7 @@ export function getAgeFromBirthdayISO(birthday: string | Date): number {
 
   if (isNaN(birthDate.getTime())) {
     throw new Error(
-      "Invalid date input. Please provide a valid ISO string or Date object."
+      "Invalid date input. Please provide a valid ISO string or Date object.",
     );
   }
 
@@ -817,7 +823,7 @@ export function getAgeFromBirthdayISO(birthday: string | Date): number {
 export function getStringPart(
   input: string,
   index: number,
-  delimiter: string
+  delimiter: string,
 ): string | null {
   // Validate input parameters
   if (typeof input !== "string")
@@ -852,7 +858,7 @@ export function isStringPartEqualTo(
   input: string,
   index: number,
   delimiter: string,
-  value: string
+  value: string,
 ): boolean {
   try {
     // Reuse getStringPart to extract the part at the specified index
@@ -879,7 +885,7 @@ export function isStringPartEqualTo(
  */
 export function autocapitalize(
   text: string,
-  mode: "word" | "character" | "sentence" | "first" = "first"
+  mode: "word" | "character" | "sentence" | "first" = "first",
 ): string {
   if (!text) return "";
 
@@ -928,7 +934,7 @@ export function hasTimeElapsed(
     | "DAYS"
     | "MONTHS"
     | "QUARTER"
-    | "YEAR" = "MINUTES"
+    | "YEAR" = "MINUTES",
 ): boolean {
   const now = new Date();
   const targetDate = new Date(dateTime);
@@ -937,7 +943,7 @@ export function hasTimeElapsed(
   const getTimeDifference = (
     target: Date,
     current: Date,
-    unit: string
+    unit: string,
   ): number => {
     const diffInMs = target.getTime() - current.getTime();
 
@@ -975,7 +981,7 @@ export function hasTimeElapsed(
  */
 export function extractYouTubeVideoID(url: string): string | null {
   const regex =
-    /(?:youtube\.com\/(?:shorts\/|(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    /(?:youtube\.com\/(?:shorts\/|(?:[^/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=))|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
   const match = url.match(regex);
   return match ? match[1] : null;
 }
@@ -1033,90 +1039,6 @@ function rgbToHex(r: number, g: number, b: number): string {
       })
       .join("")
   );
-}
-
-export enum URLType {
-  Website = "Website",
-  Image = "Image",
-  Youtube = "Youtube",
-  Facebook = "Facebook",
-  X = "X",
-  Threads = "Threads",
-  Instagram = "Instagram",
-  Spotify = "Spotify",
-  Soundcloud = "Soundcloud",
-  Canva = "Canva",
-  Pinterest = "Pinterest",
-}
-
-export function identifyURLType(url: string): URLType {
-  const lowerUrl = url.toLowerCase();
-
-  // Check for image extensions
-  const imageExtensions = [
-    ".webp",
-    ".png",
-    ".jpeg",
-    ".jpg",
-    ".tiff",
-    ".bmp",
-    ".gif",
-    ".svg",
-  ];
-  if (imageExtensions.some((ext) => lowerUrl.includes(ext))) {
-    return URLType.Image;
-  }
-
-  // Youtube
-  if (lowerUrl.includes("youtube.com") || lowerUrl.includes("youtu.be")) {
-    return URLType.Youtube;
-  }
-
-  // Facebook / Instagram
-  if (lowerUrl.includes("facebook.com") || lowerUrl.includes("fb.com")) {
-    return URLType.Facebook;
-  }
-
-  //  Instagram
-  if (lowerUrl.includes("instagram.com")) {
-    return URLType.Instagram;
-  }
-
-  //  Threads
-  if (lowerUrl.includes("threads.net")) {
-    return URLType.Threads;
-  }
-
-  //  X (formerly Twitter)
-  if (
-    lowerUrl.includes("twitter.com") || // aka "X"
-    lowerUrl.includes("x.com")
-  ) {
-    return URLType.X;
-  }
-
-  // Spotify
-  if (lowerUrl.includes("spotify.com")) {
-    return URLType.Spotify;
-  }
-
-  // Soundcloud
-  if (lowerUrl.includes("soundcloud.com")) {
-    return URLType.Soundcloud;
-  }
-
-  // Canva
-  if (lowerUrl.includes("canva.com")) {
-    return URLType.Canva;
-  }
-
-  // Pinterest
-  if (lowerUrl.includes("pinterest.com")) {
-    return URLType.Pinterest;
-  }
-
-  // Default fallback
-  return URLType.Website;
 }
 
 export function displayFormattedTIN(tin: number | string): string {
@@ -1197,7 +1119,7 @@ export type PasswordRequirement =
 export function isPasswordValidSafe(
   password: string,
   minLength: number = 8,
-  requirements: PasswordRequirement = "DEFAULT"
+  requirements: PasswordRequirement = "DEFAULT",
 ): boolean {
   if (!password?.trim()) return false;
   if (requirements === "NONE") return true;
@@ -1236,7 +1158,7 @@ export function isPasswordValidSafe(
  */
 export function appendStrings(
   strings: string[],
-  divider: string = ":"
+  divider: string = ":",
 ): string {
   return strings.join(divider);
 }
@@ -1307,7 +1229,7 @@ export function formatTime(
   fromUnit: TimeUnit = "milliseconds",
   toUnit?: TimeUnit,
   autoSize: boolean = false,
-  formatStyle: FormatStyle = "plain"
+  formatStyle: FormatStyle = "plain",
 ): string {
   const inputInMs = input * TIME_IN_MS[fromUnit];
 
@@ -1380,4 +1302,17 @@ export function formatTime(
   const unitLabel = rounded === 1 ? targetUnit.slice(0, -1) : targetUnit;
 
   return `${rounded} ${unitLabel}`;
+}
+
+export function base64Encode(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  bytes.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary);
+}
+
+export function base64Decode(base64: string): string {
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }

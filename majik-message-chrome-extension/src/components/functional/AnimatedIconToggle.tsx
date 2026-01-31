@@ -23,7 +23,7 @@ const pulse = (color: string) => keyframes`
 
 const Root = styled.div`
   width: 100%;
-  height: 100%;
+  height: fit-content;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,7 +49,9 @@ const CircleButton = styled.button<{
   background: ${({ active }) =>
     active ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)"};
 
-  transition: transform 0.15s ease, background-color 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    background-color 0.2s ease;
 
   ${({ active, color }) =>
     active &&
@@ -72,6 +74,7 @@ const MessageText = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  color: ${({ theme }) => theme.colors.textPrimary};
 `;
 
 /* ----------------------------------
@@ -119,11 +122,11 @@ export const AnimatedIconToggle: React.FC<AnimatedIconToggleProps> = ({
       >
         <Icon size={iconSize} color={color} />
       </CircleButton>
-      {(!!options?.on?.message?.trim() || !!options?.off?.message?.trim()) && 
-          <MessageText>
-            {currentValue ? options.on.message : options.off.message}
-          </MessageText>
-        }
+      {(!!options?.on?.message?.trim() || !!options?.off?.message?.trim()) && (
+        <MessageText>
+          {currentValue ? options.on.message : options.off.message}
+        </MessageText>
+      )}
     </Root>
   );
 };

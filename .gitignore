@@ -13,3 +13,6 @@ majik-message-desktop/src/main
 
 majik-message-desktop/package.json
 majik-message-desktop/package-lock.json
+
+
+majik-message-chrome-extension/.env

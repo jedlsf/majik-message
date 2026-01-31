@@ -1,11 +1,11 @@
 import styled from "styled-components";
 import { useEffect, useState, useCallback } from "react";
-import { MajikMessage } from "../../SDK/majik-message/majik-message";
+import { EnvelopeCacheItem, MajikContact } from "@thezelijah/majik-message";
 import DynamicPlaceholder from "../foundations/DynamicPlaceholder";
 
 import { toast } from "sonner";
 import { UtilityButton } from "../../globals/buttons";
-import { EnvelopeCacheItem } from "../../SDK/majik-message/core/messages/envelope-cache";
+
 import CBaseMessage from "../base/CBaseMessage";
 import AnimatedIconToggle from "../functional/AnimatedIconToggle";
 import theme from "../../globals/theme";
@@ -25,6 +25,8 @@ import {
   SectionSubTitle,
   SectionTitleFrame,
 } from "../../globals/styled-components";
+import { MajikMessageDatabase } from "../majik-context-wrapper/majik-message-database";
+import ThemeToggle from "../functional/ThemeToggle";
 
 const Container = styled.div`
   width: inherit;
@@ -50,8 +52,21 @@ const List = styled.div`
   width: inherit;
   gap: 8px;
 `;
+
+const BodyContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 8px 0;
+  width: inherit;
+  gap: 8px;
+`;
+
+const EmptyContainer = styled(BodyContainer)`
+  max-width: 600px;
+`;
 interface ScannerPanelProps {
-  majik?: MajikMessage | null;
+  majik: MajikMessageDatabase;
   showHistoryLog?: boolean;
 }
 
@@ -63,10 +78,16 @@ const ScannerPanel: React.FC<ScannerPanelProps> = ({
 }) => {
   const dispatch = useDispatch();
 
+  const [myAccount] = useState<MajikContact | null>(() => {
+    const userAccount = majik.getActiveAccount();
+    if (!userAccount) return null;
+    return userAccount;
+  });
+
   const [history, setHistory] = useState<EnvelopeCacheItem[]>([]);
   const [offset, setOffset] = useState(0);
   const scannerMode = useSelector(
-    (state: ReduxSystemRootState) => state.system.scannerMode ?? false
+    (state: ReduxSystemRootState) => state.system.scannerMode ?? false,
   );
 
   const loadPage = useCallback(
@@ -91,7 +112,7 @@ const ScannerPanel: React.FC<ScannerPanelProps> = ({
         return 0;
       }
     },
-    [majik]
+    [majik],
   );
 
   useEffect(() => {
@@ -104,7 +125,7 @@ const ScannerPanel: React.FC<ScannerPanelProps> = ({
       const decrypted = await majik.decryptEnvelope(item.envelope);
 
       setHistory((prev) =>
-        prev.map((p) => (p.id === item.id ? { ...p, message: decrypted } : p))
+        prev.map((p) => (p.id === item.id ? { ...p, message: decrypted } : p)),
       );
     } catch (e) {
       toast.error("Unauthorized Access", {
@@ -158,8 +179,20 @@ const ScannerPanel: React.FC<ScannerPanelProps> = ({
     return <DynamicPlaceholder>Please create an account.</DynamicPlaceholder>;
   }
 
+  if (!myAccount) {
+    return (
+      <EmptyContainer>
+        <DynamicPlaceholder>
+          Please create an account first to start encrypting and/or decrypting
+          messages.
+        </DynamicPlaceholder>
+      </EmptyContainer>
+    );
+  }
+
   return (
     <Container>
+      <ThemeToggle size={45} />
       <SectionTitleFrame>
         <Row>
           <h2>Scanner</h2>
@@ -179,7 +212,7 @@ const ScannerPanel: React.FC<ScannerPanelProps> = ({
         size={48}
         options={{
           on: {
-            color: theme.colors.brand.green,
+            color: theme.colors.primary,
             icon: ScanIcon,
             message: "Now scanning for messages...",
           },

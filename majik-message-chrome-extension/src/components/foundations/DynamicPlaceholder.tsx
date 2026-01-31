@@ -30,7 +30,7 @@ const StyledText = styled.div`
   max-width: 450px; /* Adjust width as needed */
 
   /* Dynamic font size */
-  font-size: clamp(10px, 1vw, 14px); /* Min: 12px, Preferred: 2vw, Max: 24px */
+  font-size: 16px;
 
   @media (max-width: 768px) {
     max-width: 250px; /* Adjust width as needed */

@@ -1,23 +1,26 @@
 import styled from "styled-components";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { toast } from "sonner";
-import { MajikMessage } from "../../SDK/majik-message/majik-message";
+
 import CBaseUserAccount from "../base/CBaseUserAccount";
 import PopUpFormButton from "../foundations/PopUpFormButton";
 import CustomInputField from "../foundations/CustomInputField";
 import { ImportIcon } from "lucide-react";
-import DynamicMenuSelector from "../functional/DynamicMenuSelector";
 import { SeedKeyInput } from "../foundations/SeedKeyInput";
+
+import { downloadBlob } from "../../utils/utils";
+import { PlusIcon } from "@phosphor-icons/react";
 import {
+  MajikContact,
   jsonToSeed,
   MnemonicJSON,
   seedStringToArray,
-} from "../../SDK/majik-message/core/utils/utilities";
-import { downloadBlob } from "../../utils/utils";
-import { PlusIcon } from "@phosphor-icons/react";
-import { MajikContact } from "../../SDK/majik-message/core/contacts/majik-contact";
+} from "@thezelijah/majik-message";
 import { SectionTitleFrame } from "../../globals/styled-components";
+import DynamicPlaceholder from "../foundations/DynamicPlaceholder";
+import { MajikMessageDatabase } from "../majik-context-wrapper/majik-message-database";
+import ThemeToggle from "../functional/ThemeToggle";
 
 const Container = styled.div`
   width: inherit;
@@ -43,6 +46,7 @@ const List = styled.div`
   width: inherit;
   gap: 8px;
 `;
+const MAX_ACCOUNT_LIMIT = 25;
 
 interface PassphraseUpdateParams {
   id: string;
@@ -50,30 +54,37 @@ interface PassphraseUpdateParams {
 }
 
 interface AccountsPanelProps {
-  majik?: MajikMessage | null;
-  onUpdate?: (updatedInstance: MajikMessage) => void;
+  majik: MajikMessageDatabase;
+  onUpdate?: (updatedInstance: MajikMessageDatabase) => void;
+  accounts: MajikContact[];
 }
 
 // ======== Main Component ========
 
-const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
+const AccountsPanel: React.FC<AccountsPanelProps> = ({
+  majik,
+  onUpdate,
+  accounts,
+}) => {
   const [label, setLabel] = useState<string>("");
   const [passphrase, setPassphrase] = useState<string>("");
   const [mnemonic, setMnemonic] = useState<string>("");
 
-  const [refreshKey, setRefreshKey] = useState<number>(0);
-
-  const [importMode, setImportMode] = useState<"backup" | "mnemonic">("backup");
-
-  const [backupKey, setBackupKey] = useState<string>("");
+  const [, setRefreshKey] = useState<number>(0);
 
   const [mnemonicJSON, setMnemonicJSON] = useState<MnemonicJSON | undefined>(
     undefined,
   );
 
-  const handleCreate = async () => {
-    if (!majik) return;
+  const handleCreate = async (): Promise<void> => {
+    if (!majik) {
+      toast.error("Problem Loading Majik Message");
+      return;
+    }
+
     try {
+      let accountID: string = "Unknown";
+
       if (mnemonic && mnemonic.trim().length > 0) {
         if (!passphrase?.trim()) {
           toast.error("Failed to create account", {
@@ -88,11 +99,12 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
           passphrase,
           label,
         );
+        accountID = createdAccount.id;
 
         const jsonData: MnemonicJSON = {
           id: createdAccount.backup,
           seed: seedStringToArray(mnemonic.trim()),
-          phrase: !!passphrase?.trim() ? passphrase.trim() : undefined,
+          phrase: passphrase?.trim() ? passphrase.trim() : undefined,
         };
 
         setMnemonicJSON(jsonData);
@@ -109,6 +121,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
         );
       } else {
         const res = await majik.createAccount(passphrase, label);
+        accountID = res.id;
         // provide backup for download immediately
         const blob = new Blob([res.backup], {
           type: "application/octet-stream",
@@ -116,27 +129,30 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
         downloadBlob(blob, "txt", `${label} | ${res.id} | BACKUP KEY`);
       }
 
+      toast.success("Account Created Successfully", {
+        description: `New Account for ${label || accountID} created successfully.`,
+        id: `toast-success-create-${label}`,
+      });
+
       setLabel("");
       setPassphrase("");
       setMnemonic("");
       setMnemonicJSON(undefined);
-      setBackupKey("");
-      onUpdate?.(majik);
       setRefreshKey((prev) => prev + 1);
     } catch (err) {
       console.error(err);
       toast.error("Account Creation Failed", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         description: (err as any)?.message || err,
         id: "error-majik-message-account-create",
       });
     }
   };
-
   const handleEditLabel = async (id: string) => {
     const newLabel =
       prompt(
         "New label:",
-        userAccounts.find((a) => a.id === id)?.meta?.label || "",
+        accounts.find((a) => a.id === id)?.meta?.label || "",
       ) || "";
     if (!majik) return;
     try {
@@ -185,8 +201,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
       await (majik as any).keyStore?.deleteIdentity?.(id).catch?.(() => {});
       // Try using KeyStore API directly if available
       try {
-        const { KeyStore } =
-          await import("../../SDK/majik-message/core/crypto/keystore");
+        const { KeyStore } = await import("@thezelijah/majik-message");
         await (KeyStore as any).deleteIdentity(id);
       } catch (e) {
         // ignore
@@ -227,24 +242,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
     }
   };
 
-  const handleToggleImportMode = (mode: string) => {
-    switch (mode) {
-      case "mnemonic": {
-        setImportMode(mode);
-        setBackupKey("");
-        break;
-      }
-      case "backup": {
-        setImportMode(mode);
-        setMnemonic("");
-        break;
-      }
-      default:
-        return;
-    }
-  };
-
-  const handleLoadMnemonicAccount = async () => {
+  const handleLoadMnemonicAccount = async (): Promise<void> => {
     if (!majik) {
       toast.error("Problem Loading Majik Message");
       return;
@@ -257,27 +255,17 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
       return;
     }
     try {
-      switch (importMode) {
-        case "mnemonic": {
-          await majik.importAccountFromMnemonicBackup(
-            mnemonicJSON.id,
-            mnemonic.trim(),
-            mnemonicJSON.phrase || "",
-            label,
-          );
-          break;
-        }
-        case "backup": {
-          await majik.importAccountFromBackup(
-            backupKey.trim(),
-            passphrase,
-            label,
-          );
-          break;
-        }
-        default:
-          return;
-      }
+      await majik.importAccountFromMnemonicBackup(
+        mnemonicJSON.id,
+        mnemonic.trim(),
+        mnemonicJSON.phrase || "",
+        label,
+      );
+
+      setLabel("");
+      setPassphrase("");
+      setMnemonic("");
+      setMnemonicJSON(undefined);
 
       toast.success("Account imported from mnemonic backup");
       onUpdate?.(majik);
@@ -285,11 +273,11 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
     } catch (e) {
       console.error(e);
       toast.error("Failed to import mnemonic backup", {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         description: (e as any)?.message || e,
       });
     }
   };
-
   const handleSetAsActive = (contact: MajikContact) => {
     if (!majik) return;
 
@@ -332,81 +320,81 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  const userAccounts = useMemo(() => {
-    if (!majik) return [];
-
-    return majik.listOwnAccounts();
-  }, [majik, refreshKey]);
-
   return (
     <Container>
+      <ThemeToggle size={45} />
       <SectionTitleFrame>
         <Row>
           <h2>Accounts</h2>
           <div style={{ display: "flex", flexDirection: "row" }}>
             <PopUpFormButton
+              scrollable
               icon={ImportIcon}
               text="Import"
-              alertTextTitle="Import Account"
-              onClick={handleLoadMnemonicAccount}
-              isDisabledButtonB={
-                importMode === "backup"
-                  ? !backupKey?.trim() || !passphrase?.trim()
-                  : !mnemonicJSON?.id?.trim() ||
+              disabled={accounts.length >= MAX_ACCOUNT_LIMIT}
+              modal={{
+                title: "Import Account",
+                description:
+                  accounts.length >= MAX_ACCOUNT_LIMIT
+                    ? "Max accounts reached."
+                    : "Import an account from a mnemonic seed phrase.",
+              }}
+              buttons={{
+                cancel: {
+                  text: "Cancel",
+                },
+                confirm: {
+                  text: "Save Changes",
+                  isDisabled:
+                    !mnemonicJSON?.id?.trim() ||
                     !mnemonicJSON ||
                     mnemonicJSON.seed.length === 0 ||
-                    !passphrase?.trim()
-              }
+                    !passphrase?.trim(),
+                  onClick: handleLoadMnemonicAccount,
+                },
+              }}
             >
-              <DynamicMenuSelector
-                onSelect={handleToggleImportMode}
-                currentValue={importMode}
+              <CustomInputField
+                onChange={(e) => setLabel(e)}
+                maxChar={100}
+                regex="letters"
+                label="Display Name"
+                currentValue={label}
+                sensitive={true}
               />
-              {importMode === "backup" ? (
-                <>
-                  <CustomInputField
-                    onChange={(e) => setBackupKey(e)}
-                    maxChar={500}
-                    label="Backup Key"
-                    required
-                    importProp={{
-                      type: "txt",
-                    }}
-                  />
-                  <CustomInputField
-                    onChange={handleUpdatePassphrase}
-                    maxChar={500}
-                    regex="alphanumeric"
-                    label="Password"
-                    currentValue={passphrase}
-                    importProp={{
-                      type: "txt",
-                    }}
-                    key="import-passphrase"
-                    required
-                  />
-                </>
-              ) : (
-                <SeedKeyInput
-                  importProp={{
-                    type: "json",
-                  }}
-                  requireBackupKey={true}
-                  onUpdatePassphrase={handleUpdatePassphrase}
-                  onChange={handleSeedKeyChange}
-                  currentValue={mnemonicJSON}
-                />
-              )}
+              <SeedKeyInput
+                importProp={{
+                  type: "json",
+                }}
+                requireBackupKey={true}
+                onUpdatePassphrase={handleUpdatePassphrase}
+                onChange={handleSeedKeyChange}
+                currentValue={mnemonicJSON}
+              />
             </PopUpFormButton>
-
             <PopUpFormButton
+              scrollable
               icon={PlusIcon}
               text="Create Account"
-              alertTextTitle="Create Account"
-              onClick={handleCreate}
-              isDisabledButtonB={
-                !label?.trim() || !mnemonicJSON || !passphrase?.trim()
-              }
+              disabled={accounts.length >= MAX_ACCOUNT_LIMIT}
+              modal={{
+                title: "Create Account",
+                description:
+                  accounts.length >= MAX_ACCOUNT_LIMIT
+                    ? "Max accounts reached."
+                    : "Create a new account with a mnemonic seed phrase.",
+              }}
+              buttons={{
+                cancel: {
+                  text: "Cancel",
+                },
+                confirm: {
+                  text: "Save Changes",
+                  isDisabled:
+                    !label?.trim() || !mnemonicJSON || !passphrase?.trim(),
+                  onClick: handleCreate,
+                },
+              }}
             >
               <CustomInputField
                 onChange={(e) => setLabel(e)}
@@ -417,6 +405,7 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
                 importProp={{
                   type: "txt",
                 }}
+                currentValue={label}
               />
               <SeedKeyInput
                 importProp={{
@@ -431,11 +420,9 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
         </Row>
       </SectionTitleFrame>
 
-      <List>
-        {userAccounts.length === 0 ? (
-          <div>No accounts</div>
-        ) : (
-          userAccounts.map((a, index) => (
+      {accounts.length > 0 ? (
+        <List>
+          {accounts.map((a, index) => (
             <CBaseUserAccount
               key={a.id}
               index={index}
@@ -450,9 +437,15 @@ const AccountsPanel: React.FC<AccountsPanelProps> = ({ majik, onUpdate }) => {
               }
               onUpdatePassphrase={handleEditPassphrase}
             />
-          ))
-        )}
-      </List>
+          ))}
+        </List>
+      ) : (
+        <List>
+          <DynamicPlaceholder>
+            You haven&apos;t created any accounts yet.
+          </DynamicPlaceholder>
+        </List>
+      )}
     </Container>
   );
 };

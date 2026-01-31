@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { downloadBlob } from "../../utils/utils";
-import { ButtonPrimaryConfirm } from "../../globals/buttons";
+
 import { toast } from "sonner";
+import { ActionButton, ButtonPrimaryConfirm } from "../../globals/buttons";
 
 /* ---------------------------------------------
  * Types
@@ -37,19 +38,10 @@ const Title = styled.div`
   opacity: 0.85;
 `;
 
-const Toggle = styled.button<{ mode: Mode }>`
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 999px;
-  border: 1px solid #333;
-  cursor: pointer;
+const Toggle = styled(ActionButton)<{ mode: Mode }>`
   background: ${({ mode, theme }) =>
-    mode === "encrypt" ? theme.colors.brand.green : theme.colors.accent};
-  color: ${({ mode, theme }) =>
-    mode === "encrypt"
-      ? theme.colors.primaryBackground
-      : theme.colors.textPrimary};
-  transition: background 0.2s ease;
+    mode === "encrypt" ? theme.gradients.primary : "#16a34a"};
+  transition: all 0.2s ease;
 
   &:hover {
     opacity: 0.9;
@@ -79,28 +71,38 @@ const TextArea = styled.textarea<{ readOnly?: boolean }>`
   border-radius: 12px;
   resize: none;
   padding: 16px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   font-size: ${({ theme }) => theme.typography.sizes.label};
   line-height: 1.5;
-  border: none;
+  border: 1px solid ${({ theme }) => theme.colors.secondaryBackground};
   outline: none;
   min-height: 160px;
   color: ${({ readOnly, theme }) =>
     readOnly ? theme.colors.textSecondary : theme.colors.textPrimary};
   background: ${({ readOnly, theme }) =>
-    readOnly ? "#0b0d11" : theme.colors.semitransparent};
-`;
+    readOnly ? theme.colors.secondaryBackground : theme.colors.semitransparent};
 
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: ${({ theme }) => theme.colors.secondaryBackground};
+    border-radius: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${({ theme }) => theme.gradients.primary};
+    border-radius: 8px;
+  }
+`
 const PreviewActions = styled.div`
   display: flex;
   gap: 8px;
   padding: 8px 16px;
-  border-top: 1px solid #222;
 `;
 
-const ActionButton = styled(ButtonPrimaryConfirm)`
-  padding: 6px 20px;
+const ExportButton = styled(ButtonPrimaryConfirm)`
+  padding: 6px 10px;
+  width: 100%;
 `;
 
 interface TextEditPreviewInputProps {
@@ -214,7 +216,7 @@ const TextEditPreviewInput: React.FC<TextEditPreviewInputProps> = ({
       input: mode === "encrypt" ? "Plain Text Input" : "Encrypted Text Input",
       output: mode === "encrypt" ? "Encrypted Preview" : "Decrypted Preview",
     }),
-    [mode]
+    [mode],
   );
 
   return (
@@ -244,13 +246,13 @@ const TextEditPreviewInput: React.FC<TextEditPreviewInputProps> = ({
           <Label>{labels.output}</Label>
           <TextArea readOnly value={output} />
           <PreviewActions>
-            <ActionButton onClick={handleCopy}>Copy</ActionButton>
-            <ActionButton onClick={handleDownloadTxt}>
+            <ExportButton onClick={handleCopy}>Copy</ExportButton>
+            <ExportButton onClick={handleDownloadTxt}>
               Download .txt
-            </ActionButton>
-            <ActionButton onClick={handleDownloadJson}>
+            </ExportButton>
+            <ExportButton onClick={handleDownloadJson}>
               Download .json
-            </ActionButton>
+            </ExportButton>
           </PreviewActions>
         </Section>
       </Body>

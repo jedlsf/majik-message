@@ -3,19 +3,20 @@ import { useMemo, useState } from "react";
 import PopUpFormButton from "../foundations/PopUpFormButton";
 import { UserPlusIcon } from "@phosphor-icons/react";
 import CustomInputField from "../foundations/CustomInputField";
-import { MajikMessage } from "../../SDK/majik-message/majik-message";
 
 import { toast } from "sonner";
 
 import TextEditPreviewInput from "../functional/TextEditPreviewInput";
 
-import { MajikContact } from "../../SDK/majik-message/core/contacts/majik-contact";
+import { MajikContact, MessageEnvelope } from "@thezelijah/majik-message";
 import { MajikContactListSelector } from "../MajikContactListSelector";
 import {
   SectionSubTitle,
   SectionTitleFrame,
 } from "../../globals/styled-components";
-import { MessageEnvelope } from "../../SDK/majik-message/core/messages/message-envelope";
+import { MajikMessageDatabase } from "../majik-context-wrapper/majik-message-database";
+import DynamicPlaceholder from "../foundations/DynamicPlaceholder";
+import ThemeToggle from "../functional/ThemeToggle";
 
 const Container = styled.div`
   width: inherit;
@@ -42,9 +43,13 @@ const BodyContainer = styled.div`
   gap: 8px;
 `;
 
+const EmptyContainer = styled(BodyContainer)`
+  max-width: 600px;
+`;
+
 interface MessagePanelProps {
-  majik: MajikMessage;
-  onUpdate?: (updatedInstance: MajikMessage) => void;
+  majik: MajikMessageDatabase;
+  onUpdate?: (updatedInstance: MajikMessageDatabase) => void;
 }
 
 const MessagePanel: React.FC<MessagePanelProps> = ({ majik, onUpdate }) => {
@@ -128,7 +133,7 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ majik, onUpdate }) => {
     const encryptedMessage = await majik.encryptTextForScanner(
       input,
       recipientIds,
-      false
+      false,
     );
     return encryptedMessage ?? "";
   };
@@ -156,15 +161,27 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ majik, onUpdate }) => {
 
   return (
     <Container>
+      <ThemeToggle size={45} />
       <SectionTitleFrame>
         <Row>
           Message
           <div style={{ display: "flex", flexDirection: "row" }}>
             <PopUpFormButton
               icon={UserPlusIcon}
-              text="Add Friend"
-              alertTextTitle="Add Friend"
-              onClick={handleAddContact}
+              text="Add Contact"
+              modal={{
+                title: "Add Friend",
+                description: "Add a new contact to your friend list.",
+              }}
+              buttons={{
+                cancel: {
+                  text: "Cancel",
+                },
+                confirm: {
+                  text: "Save Changes",
+                  onClick: handleAddContact,
+                },
+              }}
             >
               <CustomInputField
                 onChange={(e) => setInviteKey(e)}
@@ -180,27 +197,34 @@ const MessagePanel: React.FC<MessagePanelProps> = ({ majik, onUpdate }) => {
         </Row>
       </SectionTitleFrame>
 
-      <BodyContainer>
-        <SectionSubTitle>Recipients</SectionSubTitle>
-        <MajikContactListSelector
-          id="message-recipients"
-          contacts={contacts}
-          value={recipients}
-          tooltip="Add Recipient"
-          onUpdate={handleRecipientsUpdate}
-          onClearAll={handleRecipientsClear}
-          refKey="recipient"
-          allowEmpty={false}
-        />
+      {!myAccount ? (
+        <EmptyContainer>
+          <DynamicPlaceholder>
+            Please create an account first to start encrypting and/or decrypting
+            messages.
+          </DynamicPlaceholder>
+        </EmptyContainer>
+      ) : (
+        <BodyContainer>
+          <SectionSubTitle>Recipients</SectionSubTitle>
+          <MajikContactListSelector
+            id="message-recipients"
+            contacts={contacts}
+            value={recipients}
+            onUpdate={handleRecipientsUpdate}
+            onClearAll={handleRecipientsClear}
+            allowEmpty={false}
+          />
 
-        <TextEditPreviewInput
-          onEncrypt={handleEncryptMessage}
-          onDecrypt={handleDecryptMessage}
-          downloadName={`Message from ${
-            myAccount?.meta?.label || myAccount?.id
-          }`}
-        />
-      </BodyContainer>
+          <TextEditPreviewInput
+            onEncrypt={handleEncryptMessage}
+            onDecrypt={handleDecryptMessage}
+            downloadName={`Message from ${
+              myAccount?.meta?.label || myAccount?.id
+            }`}
+          />
+        </BodyContainer>
+      )}
     </Container>
   );
 };
