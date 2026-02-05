@@ -1,37 +1,98 @@
-# Majik Message
+# [Majik Message](https://message.majikah.solutions)
 
 [![Developed by Zelijah](https://img.shields.io/badge/Developed%20by-Zelijah-red?logo=github&logoColor=white)](https://thezelijah.world)
 
-**Majik Message** is a browser extension for **encrypting and decrypting text directly in your browser**. It is **not a chat platform** — it does not host conversations or store messages on a server. Instead, it allows you to securely encrypt text, share it with contacts, and decrypt it on any webpage, giving you full control over your data.
+**Majik Message** is a secure messaging platform built on cryptographic identity. Your account *is* your encryption keys—no phone numbers, no passwords, just your 12-word seed phrase and complete privacy.
 
 ![npm](https://img.shields.io/npm/v/@thezelijah/majik-message) ![npm downloads](https://img.shields.io/npm/dm/@thezelijah/majik-message) ![npm bundle size](https://img.shields.io/bundlephobia/min/%40thezelijah%2Fmajik-message) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)
+
+
+
+[Read more about Majik Message here](https://majikah.solutions/products/majik-message)
+
+[![Majik Message Thumbnail](https://gydzizwxtftlmsdaiouw.supabase.co/storage/v1/object/public/bucket-majikah-public/main/Majikah_MajikMessage_SocialCard.webp)](https://message.majikah.solutions)
+
+> Click the image to try Majik Message live.
+
+[Read Docs](https://majikah.solutions/products/majik-message/docs)
+
+
+[![Majik Message Microsoft App Store](https://get.microsoft.com/images/en-us%20light.svg)](https://apps.microsoft.com/detail/9pmjgvzzjspn)
+
+
+Also available on [Microsoft Store](https://apps.microsoft.com/detail/9pmjgvzzjspn) for free.
+
+
+[![Majik Message Google Chrome Web Store](https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png)](https://chromewebstore.google.com/detail/dhlafmkpgjagkhiokoighjaakajbckck)
+
+
+Also available on [Google Chrome Web Store](https://chromewebstore.google.com/detail/dhlafmkpgjagkhiokoighjaakajbckck) for free.
+
+
+
 
 
 ---
 
 - [Majik Message](#majik-message)
-  - [Features](#features)
-  - [Usage](#usage)
-    - [Encrypt Text](#encrypt-text)
-    - [Decrypt Text](#decrypt-text)
-    - [Account Management](#account-management)
-  - [Architecture](#architecture)
+  - [Overview](#overview)
+    - [What Makes Majik Message Different](#what-makes-majik-message-different)
+  - [Key Features](#key-features)
+    - [End-to-End Encryption](#end-to-end-encryption)
+    - [Seed Phrase–Based Identity](#seed-phrasebased-identity)
+    - [Offline Operation](#offline-operation)
+    - [Realtime Messaging (Free for Everyone)](#realtime-messaging-free-for-everyone)
+    - [Group Messaging](#group-messaging)
+    - [Message Expiration Timer](#message-expiration-timer)
+    - [Encrypted Message Export](#encrypted-message-export)
+    - [Solo Messages for Personal Storage](#solo-messages-for-personal-storage)
+    - [Multi-Account Support](#multi-account-support)
+    - [Chrome Extension](#chrome-extension)
+  - [How It Works](#how-it-works)
+    - [Account Creation](#account-creation)
+    - [Sending an Encrypted Message](#sending-an-encrypted-message)
+      - [For Solo Messages (sender-only):](#for-solo-messages-sender-only)
+      - [For Group Messages (2+ recipients):](#for-group-messages-2-recipients)
+    - [Receiving and Decrypting a Message](#receiving-and-decrypting-a-message)
+  - [Platform Availability](#platform-availability)
+    - [Desktop App](#desktop-app)
+    - [Web App](#web-app)
     - [Browser Extension](#browser-extension)
-    - [Encryption](#encryption)
-    - [Contacts \& Accounts](#contacts--accounts)
-    - [Scanner](#scanner)
-  - [How to Use Majik Message](#how-to-use-majik-message)
-    - [1. Creating an Account](#1-creating-an-account)
-    - [2. Encrypting Messages (Manual / Side Panel)](#2-encrypting-messages-manual--side-panel)
-    - [3. Encrypting Text Inside a Web Page](#3-encrypting-text-inside-a-web-page)
-    - [4. Decrypting Messages](#4-decrypting-messages)
-      - [Decrypt an Entire Page](#decrypt-an-entire-page)
-      - [Decrypt a Selected Text](#decrypt-a-selected-text)
-    - [5. Automatic Scanning and Decryption](#5-automatic-scanning-and-decryption)
-    - [6. Sharing Your Account (Invite Key)](#6-sharing-your-account-invite-key)
-    - [7. Adding Contacts](#7-adding-contacts)
-    - [8. Importing an Existing Account](#8-importing-an-existing-account)
-    - [Notes and Security Reminders](#notes-and-security-reminders)
+    - [Coming Soon](#coming-soon)
+  - [Getting Started](#getting-started)
+    - [1. Download and Install](#1-download-and-install)
+    - [2. Create Your Account](#2-create-your-account)
+    - [3. Backup Your Account](#3-backup-your-account)
+    - [4. Register for Realtime Messaging (Optional)](#4-register-for-realtime-messaging-optional)
+    - [5. Add Contacts](#5-add-contacts)
+    - [6. Start Messaging](#6-start-messaging)
+  - [Usage Guide](#usage-guide)
+    - [Desktop App / Web App](#desktop-app--web-app)
+      - [Creating an Account](#creating-an-account)
+      - [Encrypting Messages](#encrypting-messages)
+      - [Decrypting Messages](#decrypting-messages)
+      - [Managing Accounts](#managing-accounts)
+    - [Chrome Extension](#chrome-extension-1)
+      - [Encrypting Text on Any Webpage](#encrypting-text-on-any-webpage)
+      - [Decrypting Text on Any Webpage](#decrypting-text-on-any-webpage)
+      - [Automatic Scanning](#automatic-scanning)
+  - [Technical Specifications](#technical-specifications)
+    - [Cryptography Stack](#cryptography-stack)
+    - [Platform \& Infrastructure](#platform--infrastructure)
+    - [Messaging Capabilities](#messaging-capabilities)
+  - [Security](#security)
+    - [What Majik Message Protects](#what-majik-message-protects)
+    - [What Users Must Protect](#what-users-must-protect)
+    - [What Majik Message Does Not Protect](#what-majik-message-does-not-protect)
+  - [Roadmap](#roadmap)
+  - [Use Cases](#use-cases)
+    - [Privacy-Conscious Individuals](#privacy-conscious-individuals)
+    - [Journalists](#journalists)
+    - [Professionals Handling Sensitive Data](#professionals-handling-sensitive-data)
+    - [Security Researchers and Developers](#security-researchers-and-developers)
+    - [Anyone Seeking Digital Autonomy](#anyone-seeking-digital-autonomy)
+  - [Pricing](#pricing)
+  - [Part of the Majikah Ecosystem](#part-of-the-majikah-ecosystem)
   - [Contributing](#contributing)
   - [License](#license)
   - [Author](#author)
@@ -41,203 +102,432 @@
 
 ---
 
-## Features
+## Overview
 
-- **Text Encryption Anywhere**  
-  - Highlight any text on a webpage (e.g., Gmail, Facebook), right-click, and select **Encrypt** to generate a secure string. Only authorized contacts can decrypt it.  
+Majik Message replaces traditional username and password accounts with **cryptographic identity**. Messages are encrypted end-to-end using Ed25519 and X25519 elliptic curve cryptography, ensuring only recipients with the correct private keys can decrypt them.
 
-- **Local Account with Seed Phrase**  
-  - Accounts are derived from a **seed phrase** — no registration required.  
-  - Add multiple contacts who can decrypt your messages.  
-  - Share your account via **invite key** for collaborative access.  
-  - Save, export, and import your account as a **JSON file** or **backup key**.  
+Whether online or offline, you maintain full control over your encrypted communications—without relying on centralized infrastructure, personal information, or trusted intermediaries.
 
-- **Page-Wide Decryption**  
-  - Decrypt all valid encrypted strings on a page in a single action.  
+### What Makes Majik Message Different
 
-- **Automatic Scanner**  
-  - Enable the scanner in settings to automatically detect and decrypt valid encrypted text on any webpage in real-time.  
+- **True End-to-End Encryption**: Military-grade encryption using Ed25519 and X25519
+- **Seed Phrase Identity**: No email or phone number required—your 12-word seed phrase is your account
+- **Works Offline**: Encrypt and decrypt messages without internet connection
+- **No Permanent Storage**: Messages automatically expire and are never permanently stored on servers
+- **Multi-Platform**: Desktop app, web app, and Chrome extension
 
-- **Privacy-First Design**  
-  - All encryption and decryption occur locally. Messages are never stored on a server unless explicitly saved by the user.  
+
+## Key Features
+
+### End-to-End Encryption
+
+Majik Message uses proven elliptic curve cryptography:
+
+- **Ed25519**: Generates and manages your cryptographic identity
+- **X25519 (Curve25519)**: Handles secure key exchange and message encryption
+- **AES-256-GCM**: Encrypts message content with authenticated encryption
+
+Every message is encrypted on your device before transmission and can only be decrypted by the intended recipient. Not even Majik Message servers can access your message content.
+
+### Seed Phrase–Based Identity
+
+Your account is a 12-word BIP39 mnemonic seed phrase—the same standard used by cryptocurrency wallets:
+
+- Each seed phrase deterministically generates an Ed25519 keypair
+- Your public key serves as your account identity and fingerprint
+- Your private key never leaves your device and is never transmitted
+- No email, phone number, or personal information required
+
+As long as you have your 12 words, you can recover full access to your identity and decrypt your messages—anywhere, anytime.
+
+### Offline Operation
+
+Majik Message doesn't require constant connectivity:
+
+- **Encrypt messages offline**: Generate encrypted messages without internet access
+- **Decrypt messages offline**: Read previously received messages anytime
+- **Verify identities independently**: Confirm contact fingerprints using cryptographic verification
+
+This makes Majik Message ideal for high-security environments, air-gapped systems, or situations where network access is restricted.
+
+### Realtime Messaging (Free for Everyone)
+
+When online, Majik Message provides instant encrypted messaging:
+
+- WebSocket-based realtime delivery
+- Messages stored temporarily in Redis with automatic expiration (24 hours default, expandable to 30 days)
+- Typing indicators and read receipts for active conversations
+- Messages automatically expire and are permanently deleted from servers
+
+### Group Messaging
+
+Secure group conversations with up to 25 participants:
+
+- Each message is individually encrypted for every group member
+- Same security guarantees as one-on-one messaging
+- Typing indicators and read receipts work in group chats
+
+### Message Expiration Timer
+
+Set custom expiration times for sensitive conversations. Messages automatically delete after the specified duration, reducing your digital footprint.
+
+### Encrypted Message Export
+
+Messages can be exported as encrypted Base64 strings:
+
+- Download and archive encrypted messages locally
+- Share encrypted content through any channel (email, file storage, etc.)
+- Messages remain fully encrypted outside the platform
+
+### Solo Messages for Personal Storage
+
+Encrypt messages where you are the only recipient—perfect for private notes and journals:
+
+- Sender-only encryption for personal storage and archival
+- Works entirely offline in local mode (Message tab)
+- Perfect for encrypted journals, notes, passwords, or sensitive information
+- Export as encrypted Base64 strings for backup or transfer
+
+### Multi-Account Support
+
+Manage multiple cryptographic identities for different contexts:
+
+| Account Type | Local Storage     | Online Registration |
+| ------------ | ----------------- | ------------------- |
+| Free Users   | Up to 25 accounts | 5 accounts          |
+| Paid Users   | Up to 25 accounts | 10 accounts         |
+
+**What this means:**
+- **Local accounts** can encrypt and decrypt messages offline but cannot send/receive realtime messages
+- **Registered accounts** have full access to realtime messaging, typing indicators, and online features
+- You can swap which accounts are registered online at any time
+
+### Chrome Extension
+
+Available on the Google Chrome Web Store:
+
+- Browser-based encryption and decryption
+- DOM scanning: Automatically detect encrypted messages on any webpage and decrypt them inline
+- Offline-only operation: Designed for local encryption/decryption workflows
 
 ---
 
-## Usage
+## How It Works
 
-### Encrypt Text
+### Account Creation
 
-- Highlight text → right-click → Encrypt.
-- Replace the text with an encrypted string or copy it.
+When you create a Majik Message account:
 
-### Decrypt Text
+1. A 12-word BIP39 mnemonic seed phrase is generated using cryptographically secure random number generation
+2. The seed phrase deterministically generates an Ed25519 keypair
+3. The Ed25519 keys are converted to X25519 (Curve25519) keys for encryption
+4. Your public key is hashed (SHA-256) to create your account fingerprint
+5. Your private key is encrypted with a passphrase (PBKDF2-SHA256, 250k iterations) and stored locally in IndexedDB
 
-- Highlight encrypted string → right-click → Decrypt
-- Decrypt the entire page → right-click → Decrypt Page
-- Or enable the scanner to auto-detect and decrypt strings on a page
+**Critical security note:** Your seed phrase and private key never leave your device. The passphrase you set protects your encrypted private key in local storage.
 
-### Account Management
+### Sending an Encrypted Message
 
-- Create an account from a seed phrase.
-- Add contacts or share your account via an invite key.
-- Export/import your account via JSON or backup key.
+#### For Solo Messages (sender-only):
+
+1. An ephemeral X25519 keypair is generated for this message only
+2. A shared secret is computed using your ephemeral private key and your own public key (ECDH)
+3. The shared secret is hashed (SHA-256) to derive a 256-bit AES key
+4. Your message is encrypted with AES-256-GCM using the derived key and a random 12-byte IV
+5. The encrypted message, IV, and ephemeral public key are packaged and stored locally
+
+#### For Group Messages (2+ recipients):
+
+1. A random 256-bit AES key is generated for the message
+2. The message is encrypted once with AES-256-GCM
+3. An ephemeral X25519 keypair is generated
+4. The AES key is individually encrypted for each recipient using X25519 shared secrets
+
+This ensures only authorized recipients can decrypt the message, and the ephemeral key prevents long-term compromise.
+
+### Receiving and Decrypting a Message
+
+1. Your device retrieves the encrypted payload from the server or extracts it from the DOM (browser extension)
+2. The message fingerprint identifies which of your accounts should decrypt it
+3. Your private key is unlocked by decrypting it with your passphrase
+4. A shared secret is computed using your private key and the sender's ephemeral public key
+5. The AES key is derived from the shared secret (SHA-256)
+6. The message is decrypted using AES-256-GCM with the derived key and the provided IV
+
+If decryption fails (due to tampering or incorrect keys), an authentication error is thrown and the message is rejected.
 
 ---
 
-## Architecture
+## Platform Availability
+
+### Desktop App
+- **Windows**: Microsoft Store or GitHub Releases
+- **macOS**: GitHub Releases
+- **Linux**: GitHub Releases
+
+### Web App
+- Access at: [https://message.majikah.solutions](https://message.majikah.solutions)
 
 ### Browser Extension
-Injects a content script for detecting and modifying page text.
+- **Chrome**: [Chrome Web Store](https://chromewebstore.google.com/detail/majik-message/dhlafmkpgjagkhiokoighjaakajbckck)
 
-### Encryption
-Uses standard cryptographic algorithms (AES, RSA or other implemented schemes) for end-to-end encryption.
-
-### Contacts & Accounts
-Local storage using browser storage APIs (optional JSON backup).
-
-### Scanner
-Observes DOM mutations to detect and auto-decrypt valid encrypted strings.
-
----
-## How to Use Majik Message
-
-### 1. Creating an Account
-
-Majik Message uses **seed-based accounts**. No email or registration is required.
-
-1. Open the **Side Panel**.
-2. A **seed phrase** will be automatically generated.
-   - You may regenerate a new seed phrase at any time by clicking the **dice icon**.
-3. Enter a **display name**.
-   - If left empty, your public key address will be used by default.
-4. Enter a **password**, then click **Apply** to create the account.
-5. Upon creation, a **JSON backup file** will be downloaded automatically.
-   - **Important:** Keep this file secure and private.  
-     Anyone with access to this backup can open your account and decrypt your messages.
-
-Once the account is created, it becomes the active account for encryption and decryption.
+### Coming Soon
+- iOS app
+- Android app
 
 ---
 
-### 2. Encrypting Messages (Manual / Side Panel)
+## Getting Started
 
-You can encrypt text directly from the Side Panel without interacting with a webpage.
+### 1. Download and Install
 
-1. Open the **Side Panel**.
-2. Go to the **Message** tab.
-3. Toggle the mode to **Encrypt**.
-4. Choose recipients:
-   - Encrypt for **yourself only**, or
-   - Add one or more **contacts** so they can decrypt the same message.
-5. Enter your text into the input box.
-6. Choose an output option:
-   - Copy encrypted text to clipboard
-   - Download as a `.txt` file
-   - Download as a `.json` file
+Choose your platform:
+
+- **Desktop (Windows)**: [Microsoft Store](https://apps.microsoft.com/detail/9PMJGVZZJSPN) or [GitHub Releases](https://github.com/jedlsf/majik-message/releases)
+- **Web App**: [message.majikah.solutions](https://message.majikah.solutions)
+- **Chrome Extension**: [Chrome Web Store](https://chromewebstore.google.com/detail/majik-message/dhlafmkpgjagkhiokoighjaakajbckck)
+
+### 2. Create Your Account
+
+1. Launch Majik Message
+2. A 12-word seed phrase will be automatically generated
+   - You may regenerate a new seed phrase at any time by clicking the dice icon
+3. Enter a display name (optional - your public key address will be used by default if left empty)
+4. Enter a strong password, then click **Apply** to create the account
+5. Upon creation, a JSON backup file will be downloaded automatically
+   - **Important:** Keep this file secure and private. Anyone with access to this backup can open your account and decrypt your messages.
+
+### 3. Backup Your Account
+
+- Your backup file downloads automatically upon account creation
+- Store it securely offline
+- This is the ONLY way to recover your account if needed
+
+### 4. Register for Realtime Messaging (Optional)
+
+To use realtime chat features:
+
+**From the Accounts tab:**
+- Hover over an account and click 'Register Online' in the action menu
+
+**From the Majikah tab:**
+- Find 'Registered Identities' section and click the Plus (+) icon to register an existing local account
+
+**Note:** Registration is only needed for realtime chat. Local encryption/decryption works without registration.
+
+### 5. Add Contacts
+
+1. Open the Side Panel
+2. Go to the **Contacts** tab
+3. Click the **Add Friend** icon
+4. Paste the other user's invite key
+
+Or share your own invite key:
+1. Go to the **Accounts** tab
+2. Hover over your account
+3. Click the **Share** icon
+4. Copy and share your invite key
+
+### 6. Start Messaging
+
+- **For realtime chat**: Use the 'Chats' tab (requires at least 2 participants including yourself)
+- **For local encryption**: Use the 'Message' tab to encrypt messages offline and share through any channel
+- **Pro tip**: You can encrypt solo messages (only yourself as recipient) for personal storage like journals or notes—available only in local mode
 
 ---
 
-### 3. Encrypting Text Inside a Web Page
+## Usage Guide
 
-You can encrypt text directly inside any webpage (e.g., Gmail, Facebook).
+### Desktop App / Web App
 
-1. Open a page with a text editor (e.g., Gmail compose, Facebook post).
-2. Write or compose your message normally.
-3. Highlight the text you want to encrypt.
-   - You can press **Ctrl + A** to select all text.
-4. Right-click to open the context menu.
-5. Select **Majik Message → Encrypt**.
-6. Choose:
-   - Encrypt for yourself, or
-   - Encrypt for a specific contact.
+#### Creating an Account
+
+1. Open Majik Message
+2. A seed phrase will be automatically generated (click the dice icon to regenerate)
+3. Enter a display name and password
+4. Click **Apply** to create the account
+5. Save the downloaded JSON backup file securely
+
+#### Encrypting Messages
+
+**In the Message Tab (Local Mode):**
+1. Toggle mode to **Encrypt**
+2. Choose recipients (yourself only, or add contacts)
+3. Enter your text
+4. Choose output: Copy to clipboard, download as .txt, or download as .json
+
+**In Realtime Chat:**
+1. Select a conversation or create a new one
+2. Type your message
+3. Click send - the message is automatically encrypted before transmission
+
+#### Decrypting Messages
+
+**In the Message Tab:**
+1. Toggle mode to **Decrypt**
+2. Paste the encrypted text
+3. View the decrypted message
+
+**In Realtime Chat:**
+- Messages are automatically decrypted when received
+
+#### Managing Accounts
+
+- **Switch accounts**: Click on any account in the Accounts tab
+- **Register online**: Hover over account → Register Online
+- **Share invite key**: Hover over account → Share icon
+- **Export backup**: Hover over account → Export
+- **Import account**: Accounts tab → Import Account button
+
+### Chrome Extension
+
+#### Encrypting Text on Any Webpage
+
+1. Highlight the text you want to encrypt
+2. Right-click to open the context menu
+3. Select **Majik Message → Encrypt**
+4. Choose to encrypt for yourself or a specific contact
 
 The selected text will be replaced with an encrypted string.
 
----
+#### Decrypting Text on Any Webpage
 
-### 4. Decrypting Messages
+**Decrypt Selected Text:**
+1. Highlight the encrypted text
+2. Right-click → **Majik Message → Decrypt**
 
-#### Decrypt an Entire Page
+**Decrypt Entire Page:**
+1. Right-click anywhere on the page
+2. Select **Majik Message → Decrypt Page**
 
-1. Right-click anywhere on the page.
-2. Select **Majik Message → Decrypt Page**.
-3. All valid encrypted strings on the page will be decrypted.
-   - Decryption only works if the **active account** has access to the message.
+All valid encrypted strings on the page will be decrypted.
 
----
+#### Automatic Scanning
 
-#### Decrypt a Selected Text
+Enable automatic detection and decryption:
 
-1. Highlight the encrypted text.
-2. Right-click to open the context menu.
-3. Select **Majik Message → Decrypt**.
+1. Open the Side Panel
+2. Go to the **Scanner** tab
+3. Enable **Scan**
+4. Enter your account password when prompted
 
----
-
-### 5. Automatic Scanning and Decryption
-
-Majik Message can automatically detect and decrypt encrypted content on any page.
-
-1. Open the **Side Panel**.
-2. Go to the **Scanner** tab.
-3. Enable **Scan**.
-4. Enter your account password when prompted.
-
-Once enabled:
-- Any page you load (e.g., Gmail, Facebook) will be scanned.
-- If encrypted content valid for your active account is detected, it will be decrypted automatically.
+Once enabled, any page you load will be automatically scanned for encrypted content.
 
 ---
 
-### 6. Sharing Your Account (Invite Key)
+## Technical Specifications
 
-You can allow others to encrypt messages for you by sharing your invite key.
+### Cryptography Stack
 
-1. Open the **Side Panel**.
-2. Go to the **Accounts** tab.
-3. Hover over your account.
-4. Click the **Share** icon.
-5. Copy and share your **invite key**.
+| Component                   | Implementation                              |
+| --------------------------- | ------------------------------------------- |
+| Identity Generation         | Ed25519 (EdDSA on Curve25519)               |
+| Key Exchange                | X25519 (ECDH on Curve25519)                 |
+| Symmetric Encryption        | AES-256-GCM (authenticated encryption)      |
+| Hash Function               | SHA-256                                     |
+| Key Derivation (Passphrase) | PBKDF2-SHA256 (250,000 iterations)          |
+| Key Derivation (Mnemonic)   | PBKDF2-SHA256 (200,000 iterations)          |
+| Mnemonic Standard           | BIP39 (12-word seed phrases)                |
+| Random Number Generation    | Browser crypto.getRandomValues (CSPRNG)     |
+| Fingerprint                 | SHA-256 hash of public key (Base64-encoded) |
 
-Others can use this key to add you as a contact.
+All cryptographic operations use the **@stablelib** library suite for consistent, auditable implementations across platforms.
+
+### Platform & Infrastructure
+
+| Component          | Technology                                   |
+| ------------------ | -------------------------------------------- |
+| Realtime Messaging | WebSocket                                    |
+| Message Storage    | Redis with TTL (24h default, max 30 days)    |
+| Data Persistence   | No permanent server-side storage             |
+| Local Storage      | IndexedDB (encrypted private keys, contacts) |
+| Desktop App        | Microsoft Store, GitHub Releases             |
+| Browser Extension  | Google Chrome (Chrome Web Store)             |
+
+**Important:** Messages are automatically deleted from Redis after expiration. Majik Message servers never retain message content permanently and cannot decrypt messages even during temporary storage.
+
+### Messaging Capabilities
+
+| Feature            | Status                    |
+| ------------------ | ------------------------- |
+| Text Messages      | ✓ Supported               |
+| Group Chats        | ✓ Up to 25 participants   |
+| Typing Indicators  | ✓ Supported               |
+| Read Receipts      | ✓ Supported               |
+| Message Expiration | ✓ Custom timers available |
+| File/Image Sharing | ⧗ Coming soon             |
+
+---
+
+## Security
+
+### What Majik Message Protects
+
+- **Message content**: End-to-end encrypted with AES-256-GCM
+- **Identity privacy**: No phone numbers or email addresses required
+- **Private keys**: Never transmitted; encrypted at rest with PBKDF2-derived passphrase
+- **Forward secrecy**: Ephemeral keys ensure past messages remain secure even if current keys are compromised
+
+### What Users Must Protect
+
+- **Your 12-word seed phrase**: This is the ONLY way to recover your account. If lost, your account and messages are permanently inaccessible. Store it securely offline.
+- **Your passphrase**: Protects your locally stored private key. Choose a strong, unique passphrase.
+- **Device security**: If your device is compromised while your account is unlocked, an attacker could access your private keys.
+
+### What Majik Message Does Not Protect
+
+- **Metadata**: Timing, message frequency, and participant relationships may be visible to servers or network observers
+- **IP addresses**: Your IP address is visible to Majik Message servers when you connect for realtime messaging
+- **Device compromise**: If malware or an attacker gains access to your unlocked device, they may access decrypted messages or private keys
 
 ---
 
-### 7. Adding Contacts
+## Roadmap
 
-To decrypt messages from others or allow shared encryption:
+Majik Message is under active development. Planned features include:
 
-1. Open the **Side Panel**.
-2. Go to the **Contacts** tab.
-3. Click the **Add Friend** icon.
-4. Paste the other user’s **invite key**.
-
-The contact will be added to your directory.
+- **File and image sharing** (Coming soon): Send encrypted files and images directly through Majik Message
+- **Voice messages** (Coming soon): Encrypted audio recording and playback
+- **Mobile apps** (Planned): Native iOS and Android applications
+- **Paid tiers** (Coming soon): Subscription and pay-as-you-go options with increased account limits and extended message retention
 
 ---
 
-### 8. Importing an Existing Account
+## Use Cases
 
-You can restore an account using a previously saved backup.
+### Privacy-Conscious Individuals
+If you want secure messaging without linking your phone number or email address, Majik Message provides true anonymity.
 
-1. Open the **Side Panel**.
-2. Go to the **Accounts** tab.
-3. Choose **Import Account**.
-4. Select your saved **JSON backup file**.
-5. Enter the associated password.
+### Journalists
+Communicate with sources securely. The offline encryption capability allows you to exchange encrypted messages through air-gapped systems.
 
-The account will be restored and can be set as active.
+### Professionals Handling Sensitive Data
+Lawyers, healthcare providers, researchers, and other professionals can communicate confidentially without relying on third-party platforms.
+
+### Security Researchers and Developers
+Majik Message's cryptographic implementation is transparent and uses well-audited libraries (@stablelib).
+
+### Anyone Seeking Digital Autonomy
+If you believe your communications should be private by default and you want full control over your identity and data, Majik Message is designed for you.
+
+---
+
+## Pricing
+
+Majik Message is currently **free for all users**. Realtime messaging, encryption, and all core features are available at no cost.
+
+**Coming soon:** Paid subscription and pay-as-you-go models with expanded account limits and additional features will be available in the future.
 
 ---
 
-### Notes and Security Reminders
+## Part of the Majikah Ecosystem
 
-- All encryption and decryption are performed locally in your browser.
-- Majik Message does not store messages or host conversations.
-- Backup files and seed phrases grant full access to an account—store them securely.
-- Decryption depends on the currently active account.
+Majik Message is a flagship product within the Majikah system—a suite of privacy-focused, user-controlled tools designed to give individuals full ownership of their digital communications and data.
+
+All Majikah products share the same core principles: cryptographic identity, zero-knowledge architecture, and user sovereignty over personal information.
 
 ---
+
 
 ## Contributing
 
