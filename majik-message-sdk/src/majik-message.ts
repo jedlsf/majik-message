@@ -25,6 +25,8 @@ import {
   arrayToBase64,
   base64ToArrayBuffer,
   base64ToUtf8,
+  MnemonicJSON,
+  seedStringToArray,
   utf8ToBase64,
 } from "./core/utils/utilities";
 import {
@@ -41,6 +43,7 @@ import type { MAJIK_API_RESPONSE, MultiRecipientPayload } from "./core/types";
 import { MajikMessageChat } from "./core/database/chat/majik-message-chat";
 import { MajikCompressor } from "./core/compressor/majik-compressor";
 import { MajikMessageIdentity } from "./core/database/system/identity";
+import { MajikKey } from "@thezelijah/majik-key";
 
 type MajikMessageEvents =
   | "message"
@@ -215,25 +218,34 @@ export class MajikMessage {
     passphrase: string,
     label?: string,
   ): Promise<{ id: string; fingerprint: string }> {
-    const identity = await KeyStore.importIdentityFromMnemonicBackup(
-      backupBase64,
-      mnemonic,
+
+    const mJSON: MnemonicJSON = {
+      id: backupBase64,
+      seed: seedStringToArray(mnemonic),
+      phrase: passphrase,
+    };
+
+    const importedIdentity = await MajikKey.fromMnemonicJSON(
+      mJSON,
       passphrase,
+      label,
     );
 
-    const contact = new MajikContact({
-      id: identity.id,
-      publicKey: identity.publicKey,
-      fingerprint: identity.fingerprint,
-      meta: { label: label || "" },
-    });
+    await KeyStore.addMajikKey(importedIdentity);
 
-    if (!!this.getOwnAccountById(identity.id)) {
+    const accountContact = await importedIdentity.toContact().toJSON();
+    const contact = MajikContact.fromJSON(accountContact);
+
+    if (!!this.getOwnAccountById(importedIdentity.id)) {
       throw new Error("Account with the same ID already exists");
     }
 
     this.addOwnAccount(contact);
-    return { id: identity.id, fingerprint: identity.fingerprint };
+    return {
+      id: importedIdentity.id,
+      fingerprint: importedIdentity.fingerprint,
+    };
+
   }
 
   /**
@@ -245,28 +257,18 @@ export class MajikMessage {
     passphrase: string,
     label?: string,
   ): Promise<{ id: string; fingerprint: string; backup: string }> {
-    const identity = await KeyStore.createIdentityFromMnemonic(
-      mnemonic,
-      passphrase,
-    );
+    const newAccount = await MajikKey.create(mnemonic, passphrase, label);
 
-    const contact = new MajikContact({
-      id: identity.id,
-      publicKey: identity.publicKey,
-      fingerprint: identity.fingerprint,
-      meta: { label: label || "" },
-    });
+    await KeyStore.addMajikKey(newAccount);
 
-    const backup = await KeyStore.exportIdentityMnemonicBackup(
-      identity.id,
-      mnemonic,
-    );
+    const accountContact = await newAccount.toContact().toJSON();
+    const contact = MajikContact.fromJSON(accountContact);
 
     this.addOwnAccount(contact);
     return {
-      id: identity.id,
-      fingerprint: identity.fingerprint,
-      backup: backup,
+      id: newAccount.id,
+      fingerprint: newAccount.fingerprint,
+      backup: newAccount.backup,
     };
   }
 

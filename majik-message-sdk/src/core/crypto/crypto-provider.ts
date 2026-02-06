@@ -100,3 +100,9 @@ export function x25519SharedSecret(
   }
   throw new Error("@stablelib/x25519: compatible API not found");
 }
+
+
+export function sha256(input: string): string {
+  const hashed = hash(new TextEncoder().encode(input));
+  return arrayToBase64(hashed);
+}

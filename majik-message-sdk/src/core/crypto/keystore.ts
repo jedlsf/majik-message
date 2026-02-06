@@ -5,9 +5,8 @@ import {
   utf8ToBase64,
   concatUint8Arrays,
   arrayToBase64,
-  autogenerateID,
 } from "../utils/utilities";
-import { KEY_ALGO, MAJIK_SALT } from "./constants";
+import { KEY_ALGO, MAJIK_MNEMONIC_SALT, MAJIK_SALT } from "./constants";
 import { EncryptionEngine } from "./encryption-engine";
 import { generateMnemonic } from "@scure/bip39";
 import { wordlist } from "@scure/bip39/wordlists/english";
@@ -19,6 +18,7 @@ import {
   aesGcmDecrypt,
   IV_LENGTH,
 } from "./crypto-provider";
+import { MajikKey } from "@thezelijah/majik-key";
 
 /* -------------------------------
  * Types
@@ -109,6 +109,23 @@ export class KeyStore {
     });
 
     return this.dbPromise;
+  }
+
+  static async addMajikKey(key: MajikKey): Promise<void> {
+    const serializedIdentity = key.toSerializedIdentity();
+    const keyIdentity = key.toKeyIdentity();
+
+    this.unlockedIdentities.set(keyIdentity.id, keyIdentity);
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.STORE_NAME, "readwrite");
+      const store = tx.objectStore(this.STORE_NAME);
+      const req = store.put(serializedIdentity);
+
+      req.onsuccess = () => resolve();
+      req.onerror = () =>
+        reject(new KeyStoreError("Failed to store identity", req.error));
+    });
   }
 
   private static async putSerializedIdentity(
@@ -697,7 +714,7 @@ export class KeyStore {
     }
 
     // Derive AES key from mnemonic using Stablelib provider
-    const salt = new TextEncoder().encode("MajikMessageMnemonicSalt");
+    const salt = new TextEncoder().encode(MAJIK_MNEMONIC_SALT);
     const keyBytes = providerDeriveKeyFromMnemonic(mnemonic, salt);
     const iv = generateRandomBytes(IV_LENGTH);
     const ciphertext = aesGcmEncrypt(keyBytes, iv, new Uint8Array(privRawBuf));
@@ -812,7 +829,7 @@ export class KeyStore {
   private static async deriveKeyFromMnemonic(
     mnemonic: string,
   ): Promise<CryptoKey> {
-    const salt = new TextEncoder().encode("MajikMessageMnemonicSalt");
+    const salt = new TextEncoder().encode(MAJIK_MNEMONIC_SALT);
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       new TextEncoder().encode(mnemonic),

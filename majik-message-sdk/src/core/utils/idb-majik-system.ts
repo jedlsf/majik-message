@@ -1,6 +1,5 @@
 // lib/indexedDB.ts
 import { openDB, type IDBPDatabase } from "idb";
-import { autogenerateID } from "./utilities";
 
 export interface MajikIDBSaveData {
   id: string;

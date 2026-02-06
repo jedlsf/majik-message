@@ -6,6 +6,9 @@ export type MajikMessagePublicKey = string;
 
 export type MajikMessageChatID = string;
 
+export type MajikMessageThreadID = string;
+export type MajikMessageMailID = string;
+
 export interface MAJIK_API_RESPONSE {
   success: boolean;
   message: string;

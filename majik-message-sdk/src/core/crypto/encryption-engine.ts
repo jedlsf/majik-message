@@ -72,7 +72,7 @@ export class EncryptionEngine {
    * Uses Stablelib Ed25519 to derive a keypair from seed and converts to X25519.
    */
   static async deriveIdentityFromMnemonic(
-    mnemonic: string
+    mnemonic: string,
   ): Promise<EncryptionIdentity> {
     try {
       if (typeof mnemonic !== "string" || mnemonic.trim().length === 0) {
@@ -92,7 +92,7 @@ export class EncryptionEngine {
 
       if (!skCurve || !pkCurve) {
         throw new CryptoError(
-          "Failed to convert derived Ed25519 keys to Curve25519"
+          "Failed to convert derived Ed25519 keys to Curve25519",
         );
       }
 
@@ -117,7 +117,7 @@ export class EncryptionEngine {
 
   static async encryptSoloMessage(
     plaintext: string,
-    recipientPublicKey: CryptoKey | { raw: Uint8Array }
+    recipientPublicKey: CryptoKey | { raw: Uint8Array },
   ): Promise<SingleRecipientPayload> {
     this.assertNonEmptyString(plaintext);
     this.assertPublicKey(recipientPublicKey);
@@ -145,14 +145,14 @@ export class EncryptionEngine {
 
   static async decryptSoloMessage(
     payload: SingleRecipientPayload,
-    recipientPrivateKey: CryptoKey | { raw: Uint8Array }
+    recipientPrivateKey: CryptoKey | { raw: Uint8Array },
   ): Promise<string> {
     this.assertPrivateKey(recipientPrivateKey);
     this.assertPayload(payload);
 
     const privRaw = this._extractPrivateRaw(recipientPrivateKey);
     const ephRaw = new Uint8Array(
-      base64ToArrayBuffer(payload.ephemeralPublicKey)
+      base64ToArrayBuffer(payload.ephemeralPublicKey),
     );
     const shared = x25519SharedSecret(privRaw, ephRaw);
     const aesKey = hash(shared);
@@ -175,7 +175,7 @@ export class EncryptionEngine {
     recipients: Array<{
       id: string;
       publicKey: CryptoKey | { raw: Uint8Array };
-    }>
+    }>,
   ): Promise<MultiRecipientPayload> {
     this.assertNonEmptyString(plaintext);
     if (!recipients || recipients.length === 0) {
@@ -205,7 +205,7 @@ export class EncryptionEngine {
           ephemeralEncryptedKey: arrayToBase64(ephemeralEncryptedKey),
           nonce: arrayToBase64(nonce),
         };
-      })
+      }),
     );
 
     return {
@@ -219,7 +219,7 @@ export class EncryptionEngine {
   static async decryptGroupMessage(
     payload: MultiRecipientPayload,
     recipient: CryptoKey | { raw: Uint8Array },
-    fingerprint: string
+    fingerprint: string,
   ): Promise<string> {
     this.assertPrivateKey(recipient);
     this.assertPayload(payload);
@@ -229,13 +229,13 @@ export class EncryptionEngine {
 
     const privRaw = this._extractPrivateRaw(recipient);
     const ephPublic = new Uint8Array(
-      base64ToArrayBuffer(payload.ephemeralPublicKey)
+      base64ToArrayBuffer(payload.ephemeralPublicKey),
     );
     const shared = x25519SharedSecret(privRaw, ephPublic);
 
     const nonce = new Uint8Array(base64ToArrayBuffer(keyEntry.nonce));
     const encryptedKey = new Uint8Array(
-      base64ToArrayBuffer(keyEntry.ephemeralEncryptedKey)
+      base64ToArrayBuffer(keyEntry.ephemeralEncryptedKey),
     );
     const aesKey = nacl.secretbox.open(encryptedKey, nonce, shared);
     if (!aesKey)
@@ -257,7 +257,7 @@ export class EncryptionEngine {
    * Generates a SHA-256 fingerprint from a public key.
    */
   static async fingerprintFromPublicKey(
-    publicKey: CryptoKey | { raw: Uint8Array }
+    publicKey: CryptoKey | { raw: Uint8Array },
   ): Promise<string> {
     // Accept both CryptoKey and raw wrappers; use stablelib sha256 via provider
     const anyKey: any = publicKey as any;
@@ -268,7 +268,7 @@ export class EncryptionEngine {
       this.assertPublicKey(publicKey);
       const exported = await crypto.subtle.exportKey(
         "raw",
-        publicKey as CryptoKey
+        publicKey as CryptoKey,
       );
       rawBytes = new Uint8Array(exported);
     }
@@ -281,7 +281,7 @@ export class EncryptionEngine {
    * ================================ */
 
   private static async _extractPublicRaw(
-    key: CryptoKey | { raw: Uint8Array }
+    key: CryptoKey | { raw: Uint8Array },
   ): Promise<Uint8Array> {
     // Unified stablelib-backed path: export recipient raw public key then do X25519 scalar-mult
     const recipientAny: any = key as any;
@@ -300,7 +300,7 @@ export class EncryptionEngine {
   }
 
   private static _extractPrivateRaw(
-    key: CryptoKey | { raw: Uint8Array }
+    key: CryptoKey | { raw: Uint8Array },
   ): Uint8Array {
     const anyKey: any = key as any;
     if (anyKey.raw instanceof Uint8Array) return anyKey.raw;

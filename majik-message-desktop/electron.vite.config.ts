@@ -10,6 +10,9 @@ export default defineConfig(({ mode }) => {
     main: {},
     preload: {},
     renderer: {
+      optimizeDeps: {
+        exclude: ['@thezelijah/majik-message'] // Force Vite to not pre-bundle it
+      },
       publicDir: resolve(__dirname, 'src/renderer/public'),
       build: {
         outDir: resolve(__dirname, 'out/renderer'),
