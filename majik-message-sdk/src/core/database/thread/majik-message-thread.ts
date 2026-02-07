@@ -1,13 +1,16 @@
 import { v4 as uuidv4 } from "uuid";
-import * as crypto from "crypto";
+
 import { ThreadStatus } from "./enums";
 import {
   ISODateString,
+  MajikMessageAccountID,
   MajikMessagePublicKey,
   MajikMessageThreadID,
 } from "../../types";
 import { MajikUserID } from "@thezelijah/majik-user";
 import { sha256 } from "../../crypto/crypto-provider";
+import { MajikMessageMailJSON } from "./mail/majik-message-mail";
+import { MajikMessageIdentity } from "../system/identity";
 
 // ==================== Types & Interfaces ====================
 
@@ -29,7 +32,7 @@ export interface DeletionApproval {
 
 export interface MajikMessageThreadAnalytics {
   threadID: MajikMessageThreadID;
-  owner: string;
+  owner: MajikMessageAccountID;
   userID: MajikUserID;
   participantCount: number;
   messageCount: number;
@@ -40,6 +43,7 @@ export interface MajikMessageThreadAnalytics {
   tags: string[];
   category: string | undefined;
   priority: string | undefined;
+  starred: boolean;
   deletionStatus: {
     isPendingDeletion: boolean;
     isMarkedForDeletion: boolean;
@@ -49,16 +53,29 @@ export interface MajikMessageThreadAnalytics {
   };
 }
 
+export interface MajikMessageThreadSummary {
+  id: MajikMessageThreadID;
+  participants: MajikMessagePublicKey[];
+  participant_count: number;
+  latest_message: MajikMessageMailJSON;
+  latest_message_timestamp: ISODateString;
+  total_messages: number;
+  unread_count: number;
+  has_unread: boolean;
+  starred: boolean;
+}
+
 export interface MajikMessageThreadJSON {
   id: MajikMessageThreadID;
-  user_id: string;
-  owner: MajikMessagePublicKey;
+  user_id: MajikUserID;
+  owner: MajikMessageAccountID;
   metadata: ThreadMetadata;
-  timestamp: ISODateString; // ISO string
+  timestamp: ISODateString;
   participants: string[];
   status: ThreadStatus;
   hash: string;
-  deletion_approvals?: DeletionApproval[];
+  deletion_approvals: DeletionApproval[];
+  starred: boolean;
 }
 
 // ==================== Custom Errors ====================
@@ -92,26 +109,28 @@ export class OperationNotAllowedError extends MajikThreadError {
 export class MajikMessageThread {
   private readonly _id: MajikMessageThreadID;
   private readonly _userID: MajikUserID;
-  private readonly _owner: MajikMessagePublicKey; // Owner's public key
+  private readonly _owner: MajikMessageAccountID; // Owner's identity account ID
   private _metadata: ThreadMetadata;
   private readonly _timestamp: Date;
   private readonly _participants: MajikMessagePublicKey[];
   private _status: ThreadStatus;
   private readonly _hash: string;
   private _deletionApprovals: DeletionApproval[];
+  private _starred: boolean;
 
   // ==================== Private Constructor ====================
 
   private constructor(
     id: MajikMessageThreadID,
     userID: MajikUserID,
-    owner: MajikMessagePublicKey,
+    owner: MajikMessageAccountID,
     metadata: ThreadMetadata,
     timestamp: Date,
     participants: string[],
     status: ThreadStatus,
     hash: string,
     deletionApprovals: DeletionApproval[] = [],
+    starred: boolean = false,
   ) {
     this._id = id;
     this._userID = userID;
@@ -122,6 +141,7 @@ export class MajikMessageThread {
     this._status = status;
     this._hash = hash;
     this._deletionApprovals = deletionApprovals;
+    this._starred = starred;
 
     // Validate on construction
     this.validate();
@@ -165,11 +185,15 @@ export class MajikMessageThread {
     return [...this._deletionApprovals];
   }
 
+  get starred(): boolean {
+    return this._starred;
+  }
+
   // ==================== Static Create Method ====================
 
   public static create(
     userID: MajikUserID,
-    owner: MajikMessagePublicKey,
+    owner: MajikMessageIdentity,
     participants: MajikMessagePublicKey[],
     metadata: ThreadMetadata = {},
   ): MajikMessageThread {
@@ -187,7 +211,7 @@ export class MajikMessageThread {
 
       // Normalize participants (deduplicate + sort)
       const uniqueParticipants = MajikMessageThread.normalizeParticipants([
-        owner,
+        owner.publicKey,
         ...participants,
       ]);
 
@@ -219,7 +243,7 @@ export class MajikMessageThread {
       return new MajikMessageThread(
         id,
         userID,
-        owner,
+        owner.id,
         metadata,
         timestamp,
         uniqueParticipants,
@@ -236,6 +260,63 @@ export class MajikMessageThread {
         "CREATE_FAILED",
       );
     }
+  }
+
+  // ==================== Star Management ====================
+
+  /**
+   * Stars the thread for the user
+   */
+  public star(): void {
+    try {
+      if (this._starred) {
+        throw new OperationNotAllowedError("Thread is already starred");
+      }
+
+      this._starred = true;
+    } catch (error) {
+      if (error instanceof MajikThreadError) {
+        throw error;
+      }
+      throw new MajikThreadError(
+        `Failed to star thread: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "STAR_FAILED",
+      );
+    }
+  }
+
+  /**
+   * Unstars the thread for the user
+   */
+  public unstar(): void {
+    try {
+      if (!this._starred) {
+        throw new OperationNotAllowedError("Thread is not starred");
+      }
+
+      this._starred = false;
+    } catch (error) {
+      if (error instanceof MajikThreadError) {
+        throw error;
+      }
+      throw new MajikThreadError(
+        `Failed to unstar thread: ${error instanceof Error ? error.message : "Unknown error"}`,
+        "UNSTAR_FAILED",
+      );
+    }
+  }
+
+  /**
+   * Toggles the starred status of the thread
+   * @returns The new starred state
+   */
+  public toggleStar(): boolean {
+    if (this._starred) {
+      this.unstar();
+    } else {
+      this.star();
+    }
+    return this._starred;
   }
 
   // ==================== Hash Generation ====================
@@ -262,7 +343,7 @@ export class MajikMessageThread {
     timestamp: Date,
   ): string {
     const dataString = `${publicKey}:${threadID}:${timestamp.toISOString()}`;
-    return crypto.createHash("sha256").update(dataString).digest("hex");
+    return sha256(dataString);
   }
 
   // ==================== Validation ====================
@@ -699,10 +780,14 @@ export class MajikMessageThread {
       participants: [...this._participants],
       status: this._status,
       hash: this._hash,
-      deletion_approvals: this._deletionApprovals.map((approval) => ({
-        ...approval,
-        timestamp: approval.timestamp,
-      })),
+      deletion_approvals:
+        this._deletionApprovals.length > 0
+          ? this._deletionApprovals.map((approval) => ({
+              ...approval,
+              timestamp: approval.timestamp,
+            }))
+          : [],
+      starred: this._starred,
     };
   }
 
@@ -737,6 +822,7 @@ export class MajikMessageThread {
         data.status,
         data.hash,
         deletionApprovals,
+        data.starred,
       );
     } catch (error) {
       if (error instanceof MajikThreadError) {
@@ -849,6 +935,7 @@ export class MajikMessageThread {
           ...approval,
           timestamp: approval.timestamp,
         })),
+        starred: this._starred,
       };
 
       // If we're auto-closing and status changed, actually update the instance
@@ -905,6 +992,7 @@ export class MajikMessageThread {
         approvedCount: this._deletionApprovals.length,
         totalParticipants: this._participants.length,
       },
+      starred: this._starred,
     };
   }
 }

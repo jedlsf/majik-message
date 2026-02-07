@@ -8,6 +8,7 @@ import {
   AddressBookIcon,
   ChatIcon,
   EnvelopeIcon,
+  PaperPlaneIcon,
   StarFourIcon,
   UserIcon
 } from '@phosphor-icons/react'
@@ -38,6 +39,7 @@ import CustomInputField from './components/foundations/CustomInputField'
 import { SeedKeyInput } from './components/foundations/SeedKeyInput'
 import { downloadBlob } from './utils/utils'
 import { useMajikah } from './components/majikah-session-wrapper/use-majikah'
+import EmailThreads from './components/panels/threads/EmailThreads'
 
 const RootContainer = styled.div`
   display: flex;
@@ -397,6 +399,14 @@ function App(): JSX.Element {
       name: 'Chats',
       icon: ChatIcon,
       element: <ConversationSidePanel majik={majik} onUpdate={handleRefreshInstance} />,
+      notification: <NotificationDot />
+    },
+    {
+      id: 'threads',
+      route: '/threads',
+      name: 'Threads',
+      icon: PaperPlaneIcon,
+      element: <EmailThreads majik={majik} onUpdate={handleRefreshInstance} />,
       notification: <NotificationDot />
     },
     {

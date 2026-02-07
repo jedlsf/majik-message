@@ -18,3 +18,7 @@ export type * from "./core/database/chat/types";
 export * from "./core/database/system/identity";
 
 export * from "./core/compressor/majik-compressor";
+
+export * from "./core/database/thread/majik-message-thread";
+export * from "./core/database/thread/mail/majik-message-mail";
+export * from "./core/database/thread/enums";

@@ -6,8 +6,8 @@ import { FileJsonIcon } from 'lucide-react'
 import { ClipboardIcon, TextAaIcon } from '@phosphor-icons/react'
 
 import { Tooltip } from 'react-tooltip'
-import { dangerousSites } from '../../utils/globalDropdownOptions'
-import { isDevEnvironment, isPasswordValidSafe } from '../../utils/utils'
+import { dangerousSites, disposableEmailDomains } from '../../utils/globalDropdownOptions'
+import { extractEmailDomain, isDevEnvironment, isPasswordValidSafe } from '@/utils/utils'
 
 // Styled components
 const InputWrapper = styled.div`
@@ -277,6 +277,15 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     let error = false
     let errorText = ''
     const processedValue = allcaps ? value.toUpperCase() : value
+
+    // 🔐 XSS / HTML guard
+    if (checkForHTMLTags(processedValue)) {
+      setHasError(true)
+      setErrorMessage('HTML or script-like content is not allowed.')
+      onValidated?.(false)
+      return // ⛔ stop here
+    }
+
     const characterCount = processedValue.length
     setCharCount(characterCount)
 
@@ -288,10 +297,18 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
       error = true
       errorText = 'This field is required'
       onValidated?.(false)
-    } else if (type === 'email' && !validateEmail(processedValue)) {
-      error = true
-      errorText = 'Please enter a valid email address'
-      onValidated?.(true)
+    } else if (type === 'email') {
+      if (!validateEmail(processedValue)) {
+        error = true
+        errorText = 'Please enter a valid email address'
+        onValidated?.(false)
+      } else if (isDisposableEmail(processedValue)) {
+        error = true
+        errorText = 'Temporary or disposable email addresses are not allowed.'
+        onValidated?.(false)
+      } else {
+        onValidated?.(true)
+      }
     } else if (type === 'url') {
       if (processedValue.trim() !== '') {
         const urlIsValidFormat = validateURL(processedValue)
@@ -392,6 +409,17 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
     }
   }
 
+  const handleBlurSafe = (): void => {
+    if (checkForHTMLTags(inputValue)) {
+      setHasError(true)
+      setErrorMessage('Invalid content detected.')
+      onValidated?.(false)
+      return
+    }
+
+    onBlur?.()
+  }
+
   // --- IMPORT HANDLERS ---
   const handleJsonImport = async (): Promise<void> => {
     if (!importProp?.jsonAccessor) {
@@ -456,7 +484,9 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
   }
 
   const applyValue = (value: string): void => {
-    const processed = capitalize ? autocapitalize(value, capitalize) : value
+    const cleaned = sanitizeInput(value)
+    const processed = capitalize ? autocapitalize(cleaned, capitalize) : cleaned
+
     setCharCount(processed.length)
     onChange?.(processed)
     setHasError(false)
@@ -555,7 +585,7 @@ const CustomInputField: React.FC<CustomInputFieldProps> = ({
           placeholder={placeholder?.trim() ? placeholder : isLabelHint ? label : ''}
           className={className}
           disabled={disabled}
-          onBlur={onBlur}
+          onBlur={handleBlurSafe}
           onKeyDown={handleKeyDown}
           autoFocus={autofocus}
           data-private={sensitive ? true : undefined}
@@ -616,4 +646,77 @@ function autocapitalize(
     default:
       return text.charAt(0).toUpperCase() + text.slice(1)
   }
+}
+
+/**
+ * Detects whether a string contains HTML-like or XSS-related patterns.
+ * This is a heuristic check, not a full HTML parser.
+ */
+function checkForHTMLTags(input: string): boolean {
+  if (!input) return false
+
+  const normalized = input.toLowerCase()
+
+  // Common HTML / SVG / XSS entry points
+  const dangerousPatterns = [
+    '<svg',
+    '<img',
+    '<script',
+    '<iframe',
+    '<object',
+    '<embed',
+    '<link',
+    '<meta',
+    '<style',
+    '<base',
+    'onload=',
+    'onerror=',
+    'onclick=',
+    'javascript:',
+    'data:'
+  ]
+
+  return dangerousPatterns.some((pattern) => normalized.includes(pattern))
+}
+
+/**
+ * Sanitizes a string by removing HTML tags and dangerous constructs
+ * if HTML-like content is detected.
+ */
+function sanitizeInput(input: string): string {
+  if (!input) return ''
+
+  if (!checkForHTMLTags(input)) {
+    return input
+  }
+
+  let sanitized = input
+
+  // Remove HTML tags
+  sanitized = sanitized.replace(/<[^>]*>/g, '')
+
+  // Remove event handlers (onload=, onclick=, etc.)
+  sanitized = sanitized.replace(/\bon\w+\s*=\s*["']?[^"']*["']?/gi, '')
+
+  // Remove javascript: and data: protocols
+  sanitized = sanitized.replace(/\b(javascript|data)\s*:/gi, '')
+
+  // Remove stray angle brackets & quotes
+  sanitized = sanitized.replace(/[<>"]/g, '')
+
+  return sanitized.trim()
+}
+
+/**
+ * Checks whether an email belongs to a known disposable or temporary provider.
+ */
+function isDisposableEmail(email: string): boolean {
+  if (!email) return false
+
+  const domain = extractEmailDomain(email)
+  if (!domain) return false
+
+  return disposableEmailDomains.some(
+    (blocked) => domain === blocked || domain.endsWith(`.${blocked}`)
+  )
 }

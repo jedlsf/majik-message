@@ -28,7 +28,7 @@ export interface MajikMessageMailJSON {
   id: MajikMessageMailID;
   thread_id: MajikMessageThreadID;
   account: MajikMessageAccountID;
-  message: string; // Compressed message
+  message: string; 
   sender: MajikMessagePublicKey;
   recipients: MajikMessagePublicKey[];
   timestamp: ISODateString;

@@ -89,7 +89,7 @@ export function x25519SharedSecret(
   privRaw: Uint8Array,
   pubRaw: Uint8Array
 ): Uint8Array {
-  // Use @stablelib/x25519 for scalar multiplication / shared secret
+
   const priv = new Uint8Array(privRaw);
   const pub = new Uint8Array(pubRaw);
   if ((x25519 as any).scalarMult) {

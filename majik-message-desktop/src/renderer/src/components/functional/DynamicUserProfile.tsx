@@ -20,6 +20,7 @@ import { ChoiceButton } from '@renderer/globals/buttons'
 import { MajikMessageIdentitySelector } from '../MajikMessageIdentitySelector'
 import { useMajik } from '../majik-context-wrapper/use-majik'
 import ThemeToggle from './ThemeToggle'
+import CustomInputField from '../foundations/CustomInputField'
 
 // Styled Components
 const Container = styled.div`
@@ -355,40 +356,42 @@ export const DynamicUserProfile: React.FC<DynamicUserProfileProps> = ({
             }}
           >
             <FormGroup>
-              <FormLabel>
-                Display Name<Required>*</Required>
-              </FormLabel>
-              <Input
-                type="text"
-                value={currentUserAccount?.displayName || ''}
-                onChange={(e) => handleFieldChange('displayName', e.target.value)}
+              <CustomInputField
+                label="Display Name"
+                required
+                currentValue={currentUserAccount?.displayName}
+                onChange={(e) => handleFieldChange('displayName', e)}
                 placeholder="Enter your display name"
-                maxLength={100}
+                maxChar={100}
+                regex="letters"
+                sensitive={true}
               />
             </FormGroup>
 
             <InputRow>
               <FormGroup>
-                <FormLabel>
-                  First Name<Required>*</Required>
-                </FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.firstName || ''}
-                  onChange={(e) => handleFieldChange('firstName', e.target.value)}
+                <CustomInputField
+                  label="First Name"
+                  required
+                  currentValue={currentUserAccount?.firstName || ''}
+                  onChange={(e) => handleFieldChange('firstName', e)}
                   placeholder="First name"
+                  maxChar={100}
+                  regex="letters"
+                  sensitive={true}
                 />
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>
-                  Last Name<Required>*</Required>
-                </FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.lastName || ''}
-                  onChange={(e) => handleFieldChange('lastName', e.target.value)}
+                <CustomInputField
+                  label="Last Name"
+                  required
+                  currentValue={currentUserAccount?.lastName || ''}
+                  onChange={(e) => handleFieldChange('lastName', e)}
                   placeholder="Last name"
+                  maxChar={150}
+                  regex="letters"
+                  sensitive={true}
                 />
               </FormGroup>
             </InputRow>
@@ -426,77 +429,80 @@ export const DynamicUserProfile: React.FC<DynamicUserProfileProps> = ({
             <Divider />
 
             <FormGroup>
-              <FormLabel>
-                Country<Required>*</Required>
-              </FormLabel>
-              <Input
-                type="text"
-                value={currentUserAccount?.metadata.address?.country || defaultAddress.country}
-                onChange={(e) => handleFieldChange('address.country', e.target.value)}
+              <CustomInputField
+                label="Country"
+                required
+                currentValue={
+                  currentUserAccount?.metadata.address?.country || defaultAddress.country
+                }
+                onChange={(e) => handleFieldChange('address.country', e)}
                 placeholder="Country"
-                data-private
+                maxChar={100}
+                regex="letters"
+                sensitive={true}
               />
             </FormGroup>
 
             <InputRow>
               <FormGroup>
-                <FormLabel>
-                  City<Required>*</Required>
-                </FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.metadata.address?.city || defaultAddress.city}
-                  onChange={(e) => handleFieldChange('address.city', e.target.value)}
+                <CustomInputField
+                  label="City"
+                  required
+                  currentValue={currentUserAccount?.metadata.address?.city || defaultAddress.city}
+                  onChange={(e) => handleFieldChange('address.city', e)}
                   placeholder="City"
-                  data-private
+                  maxChar={100}
+                  regex="letters"
+                  sensitive={true}
                 />
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>Barangay</FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.metadata.address?.area || defaultAddress.area}
-                  onChange={(e) => handleFieldChange('address.area', e.target.value)}
-                  placeholder="Barangay"
-                  data-private
+                <CustomInputField
+                  label="Barangay"
+                  currentValue={currentUserAccount?.metadata.address?.area || defaultAddress.area}
+                  onChange={(e) => handleFieldChange('address.area', e)}
+                  placeholder="Barangay/Area"
+                  maxChar={100}
+                  sensitive={true}
                 />
               </FormGroup>
             </InputRow>
 
             <FormGroup>
-              <FormLabel>Street</FormLabel>
-              <Input
-                type="text"
-                value={currentUserAccount?.metadata.address?.street || defaultAddress.street}
-                onChange={(e) => handleFieldChange('address.street', e.target.value)}
+              <CustomInputField
+                label="Street"
+                currentValue={currentUserAccount?.metadata.address?.street || defaultAddress.street}
+                onChange={(e) => handleFieldChange('address.street', e)}
                 placeholder="Street address"
-                data-private
+                maxChar={250}
+                sensitive={true}
               />
             </FormGroup>
 
             <InputRow>
               <FormGroup>
-                <FormLabel>Building/House No.</FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.metadata.address?.building || ''}
-                  onChange={(e) => handleFieldChange('address.building', e.target.value)}
+                <CustomInputField
+                  label="Building/House No."
+                  currentValue={
+                    currentUserAccount?.metadata.address?.building || defaultAddress.building
+                  }
+                  onChange={(e) => handleFieldChange('address.building', e)}
                   placeholder="Building or house number"
-                  data-private
+                  maxChar={250}
+                  sensitive={true}
                 />
               </FormGroup>
 
               <FormGroup>
-                <FormLabel>
-                  Postal Code<Required>*</Required>
-                </FormLabel>
-                <Input
-                  type="text"
-                  value={currentUserAccount?.metadata.address?.zip || defaultAddress.zip}
-                  onChange={(e) => handleFieldChange('address.zip', e.target.value)}
-                  placeholder="Postal code"
-                  data-private
+                <CustomInputField
+                  label="Postal/ZIP Code"
+                  currentValue={currentUserAccount?.metadata.address?.zip || defaultAddress.zip}
+                  onChange={(e) => handleFieldChange('address.zip', e)}
+                  placeholder="Building or house number"
+                  maxChar={8}
+                  sensitive={true}
+                  regex="numbers"
                 />
               </FormGroup>
             </InputRow>
